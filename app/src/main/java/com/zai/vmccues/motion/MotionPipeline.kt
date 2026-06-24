@@ -83,6 +83,7 @@ class MotionPipeline(context: Context) : SensorEventListener {
         private set
     @Volatile var available: Boolean = false
         private set
+    @Volatile private var running: Boolean = false
 
     private val latestRotation = FloatArray(5)
     private var lastTickMs: Long = 0L
@@ -98,6 +99,8 @@ class MotionPipeline(context: Context) : SensorEventListener {
         deadzone: Float,
         sensitivity: Float,
     ) {
+        // Prevent double registration — unregister first if already running.
+        if (running) stop()
         integrator.setParams(filterAlpha, dampingCoef, returnToCenterCoef, inputClamp)
         this.deadzone = deadzone
         this.sensitivity = sensitivity
@@ -110,6 +113,7 @@ class MotionPipeline(context: Context) : SensorEventListener {
             return
         }
         available = true
+        running = true
         if (la != null) sensorManager.registerListener(this, la, sensorDelay, sensorHandler)
         else if (ra != null) {
             sensorManager.registerListener(this, ra, sensorDelay, sensorHandler)
@@ -121,6 +125,7 @@ class MotionPipeline(context: Context) : SensorEventListener {
     }
 
     fun stop() {
+        running = false
         sensorManager.unregisterListener(this)
         integrator.reset()
         _dotOffset.value = ForceVector.ZERO

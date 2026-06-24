@@ -55,6 +55,7 @@ class DeadReckoningIntegrator {
         this.inputClamp = inputClamp
     }
 
+    @Synchronized
     fun reset() {
         velocityX = 0f; velocityY = 0f
         positionX = 0f; positionY = 0f
@@ -68,6 +69,7 @@ class DeadReckoningIntegrator {
      * Returns the NEGATED position (so dots appear anchored to the earth)
      * scaled to pixels, ready for dot displacement.
      */
+    @Synchronized
     fun update(input: ForceVector, dtSec: Float): ForceVector {
         var ax = input.lateral
         var ay = input.longitudinal

@@ -42,6 +42,9 @@ object PreviewUtilities {
         centerExclusion: Float,
         dynamic: Boolean,
     ): List<DotSpec> {
+        // Ensure inset is at least the dot radius (6.5dp) so corner dots
+        // are never clipped by the edge of the screen.
+        val safeInset = insetPx.coerceAtLeast(MIN_DOT_INSET_DP * (insetPx / 16f))
         val out = ArrayList<DotSpec>(sideCount * 2 + endCount * 2)
         var i = 0
 
@@ -49,16 +52,16 @@ object PreviewUtilities {
         val ys = positionsAlong(height, sideCount, centerExclusion)
         for (yPos in ys) {
             val (phase, sizeMul) = dotJitter(i++, dynamic)
-            out.add(DotSpec(insetPx, yPos, Axis.HORIZONTAL, phase, sizeMul))
-            out.add(DotSpec(width - insetPx, yPos, Axis.HORIZONTAL, phase, sizeMul))
+            out.add(DotSpec(safeInset, yPos, Axis.HORIZONTAL, phase, sizeMul))
+            out.add(DotSpec(width - safeInset, yPos, Axis.HORIZONTAL, phase, sizeMul))
         }
 
         // Top + bottom edges (respond to longitudinal force → vertical shift).
         val xs = positionsAlong(width, endCount, centerExclusion)
         for (xPos in xs) {
             val (phase, sizeMul) = dotJitter(i++, dynamic)
-            out.add(DotSpec(xPos, insetPx, Axis.VERTICAL, phase, sizeMul))
-            out.add(DotSpec(xPos, height - insetPx, Axis.VERTICAL, phase, sizeMul))
+            out.add(DotSpec(xPos, safeInset, Axis.VERTICAL, phase, sizeMul))
+            out.add(DotSpec(xPos, height - safeInset, Axis.VERTICAL, phase, sizeMul))
         }
 
         return out
@@ -96,6 +99,8 @@ object PreviewUtilities {
         val sizeMul = 0.85f + (index % 3) * 0.15f
         return phase to sizeMul
     }
+
+    private const val MIN_DOT_INSET_DP = 16f
 
     /** Which edge axis a dot lives on — determines which force moves it. */
     enum class Axis { HORIZONTAL, VERTICAL }

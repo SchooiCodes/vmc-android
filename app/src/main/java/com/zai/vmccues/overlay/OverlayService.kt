@@ -113,7 +113,8 @@ class OverlayService : Service() {
     // --- overlay window management ----------------------------------------
 
     private fun ensureOverlay() {
-        if (overlayAttached) return
+        // If current view is still attached, nothing to do.
+        if (overlayAttached && overlayView?.isAttachedToWindow == true) return
         if (!Settings.canDrawOverlays(this)) {
             Log.w(TAG, "SYSTEM_ALERT_WINDOW not granted; overlay will not be shown")
             return
@@ -156,7 +157,9 @@ class OverlayService : Service() {
                 }
             }
         }
-        overlayView = null
+        // Don't null out overlayView — keep the reference so the flow
+        // collection can safely call methods on the detached view (no-op).
+        // ensureOverlay() will check isAttachedToWindow before creating a new one.
         overlayAttached = false
     }
 
