@@ -267,13 +267,18 @@ class OverlayService : Service() {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
         val modeText = when (settings?.mode) {
-            ActivationMode.ON -> "On — always showing dots"
-            ActivationMode.AUTOMATIC -> "Automatic — waiting for vehicle context"
+            ActivationMode.ON -> "Dots always visible"
+            ActivationMode.AUTOMATIC -> "Waiting for vehicle context"
             ActivationMode.OFF, null -> getString(R.string.notif_text)
+        }
+        val detailText = buildString {
+            append(modeText)
+            if (settings?.adaptiveContrast == true) append(" · Adaptive contrast")
+            if (settings?.pattern == com.zai.vmccues.data.DotPattern.DYNAMIC) append(" · Dynamic pattern")
         }
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(R.string.notif_title))
-            .setContentText(modeText)
+            .setContentText(detailText)
             .setSmallIcon(R.drawable.ic_tile)
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)

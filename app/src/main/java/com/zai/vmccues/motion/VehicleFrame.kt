@@ -39,16 +39,17 @@ import android.hardware.SensorManager
 object VehicleFrame {
 
     /** Scratch buffers reused across calls to avoid per-frame allocation. */
-    private val r = FloatArray(9)      // device -> world rotation matrix
-    private val rInv = FloatArray(9)   // world -> device (unused, kept for clarity)
+    private val r = FloatArray(9)
     private val accDevice = FloatArray(3)
     private val accWorld = FloatArray(3)
+    private val forwardDevice = floatArrayOf(0f, -1f, 0f)
+    private val rightDevice = floatArrayOf(1f, 0f, 0f)
 
     // Device-space basis vectors we care about, rotated into world frame.
-    private val forwardWorld = FloatArray(3)  // top of phone (-Y device)
-    private val rightWorld = FloatArray(3)    // right of phone (+X device)
-    private val forwardHoriz = FloatArray(3)  // forward projected on horizontal plane
-    private val rightHoriz = FloatArray(3)    // right projected on horizontal plane
+    private val forwardWorld = FloatArray(3)
+    private val rightWorld = FloatArray(3)
+    private val forwardHoriz = FloatArray(3)
+    private val rightHoriz = FloatArray(3)
 
     /**
      * @param rotationValues the `SensorEvent.values` array from
@@ -71,14 +72,14 @@ object VehicleFrame {
 
         // 4. Recover phone "forward" (-Y device) and "right" (+X device) in
         //    the world frame.
-        multiplyMV3(r, floatArrayOf(0f, -1f, 0f), forwardWorld)
-        multiplyMV3(r, floatArrayOf(1f, 0f, 0f), rightWorld)
+        multiplyMV3(r, forwardDevice, forwardWorld)
+        multiplyMV3(r, rightDevice, rightWorld)
 
         // Project both onto the horizontal plane (zero out world-Z) + normalize.
         forwardHoriz[0] = forwardWorld[0]; forwardHoriz[1] = forwardWorld[1]; forwardHoriz[2] = 0f
         rightHoriz[0] = rightWorld[0];   rightHoriz[1] = rightWorld[1];   rightHoriz[2] = 0f
-        val fLen = Math.hypot(forwardHoriz[0].toDouble(), forwardHoriz[1].toDouble()).toFloat()
-        val rLen = Math.hypot(rightHoriz[0].toDouble(), rightHoriz[1].toDouble()).toFloat()
+        val fLen = kotlin.math.hypot(forwardHoriz[0].toDouble(), forwardHoriz[1].toDouble()).toFloat()
+        val rLen = kotlin.math.hypot(rightHoriz[0].toDouble(), rightHoriz[1].toDouble()).toFloat()
         // Guard against divide-by-zero if the phone is held flat (face up).
         // In that degenerate orientation forward is undefined; we return zero
         // rather than garbage.

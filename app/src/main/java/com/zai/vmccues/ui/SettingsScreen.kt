@@ -77,6 +77,7 @@ fun SettingsScreen() {
 
     var showDisclaimer by remember { mutableStateOf(!settings.safetyAcknowledged) }
     var showColorPicker by remember { mutableStateOf(false) }
+    var showResetDialog by remember { mutableStateOf(false) }
 
     Column(
         Modifier
@@ -173,6 +174,12 @@ fun SettingsScreen() {
                 },
                 showSeparator = true,
                 onClick = { showColorPicker = true },
+            )
+            SettingsRow(
+                title = "Adaptive Contrast",
+                subtitle = "Dots adapt to wallpaper behind them",
+                trailing = { IosSwitch(checked = settings.adaptiveContrast, onCheckedChange = { v -> scope.launch { repo.setAdaptiveContrast(v) } }) },
+                showSeparator = true,
             )
             SettingsRow(
                 title = "Larger Dots",
@@ -295,7 +302,7 @@ fun SettingsScreen() {
                 title = "Reset to Defaults",
                 trailing = {},
                 showSeparator = false,
-                onClick = { scope.launch { repo.reset() } },
+                onClick = { showResetDialog = true },
             )
         }
 
@@ -323,6 +330,26 @@ fun SettingsScreen() {
             currentColor = settings.dotColor,
             onColorSelected = { c -> scope.launch { repo.setDotColor(c) } },
             onDismiss = { showColorPicker = false },
+        )
+    }
+    if (showResetDialog) {
+        AlertDialog(
+            onDismissRequest = { showResetDialog = false },
+            title = { Text("Reset Settings") },
+            text = { Text("This will reset all settings to their default values. This action cannot be undone.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    scope.launch { repo.reset() }
+                    showResetDialog = false
+                }) {
+                    Text("Reset", color = IosTheme.colors.red)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showResetDialog = false }) {
+                    Text("Cancel", color = IosTheme.colors.blue)
+                }
+            },
         )
     }
 }
