@@ -1,6 +1,7 @@
 # Built files
 build/
 .gradle/
+.kotlin/
 local.properties
 *.iml
 .idea/

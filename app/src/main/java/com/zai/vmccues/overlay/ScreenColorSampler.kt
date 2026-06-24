@@ -1,32 +1,31 @@
 package com.zai.vmccues.overlay
 
 import android.app.WallpaperManager
+import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.drawable.Drawable
+import android.os.Build
 import android.os.SystemClock
 import android.util.Log
 import kotlin.math.min
 
-/**
- * Samples the device wallpaper to determine the average brightness behind
- * each dot's position. Used by [DotOverlayView] for adaptive contrast —
- * dots choose light or dark colors based on what's actually behind them,
- * matching iOS's compositor-level adaptive rendering.
- *
- * The wallpaper bitmap is cached and re-sampled once per second to avoid
- * hammering WallpaperManager on every frame.
- */
 class ScreenColorSampler(context: Context) {
 
     companion object {
         private const val TAG = "ScreenColorSampler"
+        private const val SAMPLE_SIZE = 8
         private const val SAMPLE_INTERVAL_MS = 1000L
-        private const val SAMPLE_SIZE = 64
     }
 
-    private val wallpaperManager = WallpaperManager.getInstance(context)
+    private val wallpaperManager = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        context.getSystemService(Context.WALLPAPER_SERVICE) as? WallpaperManager
+            ?: WallpaperManager.getInstance(context)
+            ?: throw IllegalStateException("Unable to get WallpaperManager")
+    } else {
+        WallpaperManager.getInstance(context)
+    }
 
     @Volatile private var wallpaperBitmap: Bitmap? = null
     @Volatile private var lastSampleTime: Long = 0L
@@ -71,7 +70,6 @@ class ScreenColorSampler(context: Context) {
             val r = (pixel shr 16) and 0xFF
             val g = (pixel shr 8) and 0xFF
             val b = pixel and 0xFF
-            // ITU-R BT.601 luma.
             totalLuminance += (0.299 * r + 0.587 * g + 0.114 * b).toLong()
             count++
         }
@@ -91,6 +89,7 @@ class ScreenColorSampler(context: Context) {
         screenHeight: Int,
     ): Boolean = getBackgroundBrightness(screenX, screenY, screenWidth, screenHeight) > 0.45f
 
+    @SuppressLint("MissingPermission")
     private fun getWallpaperBitmap(): Bitmap? {
         val now = SystemClock.elapsedRealtime()
         if (wallpaperBitmap != null && now - lastSampleTime < SAMPLE_INTERVAL_MS) {
@@ -98,14 +97,13 @@ class ScreenColorSampler(context: Context) {
         }
         lastSampleTime = now
         return try {
-            val drawable: Drawable? = wallpaperManager.drawable
+            val drawable: Drawable? = wallpaperManager.peekDrawable()
             if (drawable == null) {
                 Log.w(TAG, "wallpaper drawable is null")
                 return wallpaperBitmap
             }
-            val w = min(drawable.intrinsicWidth, 512)
-            val h = min(drawable.intrinsicHeight, 512)
-            if (w <= 0 || h <= 0) return wallpaperBitmap
+            val w = min(drawable.intrinsicWidth, 512).coerceAtLeast(1)
+            val h = min(drawable.intrinsicHeight, 512).coerceAtLeast(1)
 
             val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
             try {

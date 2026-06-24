@@ -1,6 +1,7 @@
 package com.zai.vmccues.gate
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -55,6 +56,7 @@ class ActivityRecognitionProvider(private val appContext: Context) {
      * Begin receiving activity updates. Safe to call repeatedly; subsequent
      * calls are no-ops while already subscribed.
      */
+    @SuppressLint("MissingPermission")
     fun start() {
         if (subscribed) return
         if (!hasPermission()) {
@@ -63,7 +65,12 @@ class ActivityRecognitionProvider(private val appContext: Context) {
         }
         val pi = makePendingIntent()
         // ~20s detection interval — battery-friendly coarse gate.
-        val task = client.requestActivityUpdates(DETECTION_INTERVAL_MS, pi)
+        val task = try {
+            client.requestActivityUpdates(DETECTION_INTERVAL_MS, pi)
+        } catch (e: SecurityException) {
+            Log.w(TAG, "ACTIVITY_RECOGNITION permission denied; no-op", e)
+            return
+        }
         task.addOnSuccessListener {
             subscribed = true
             Log.i(TAG, "subscribed to activity updates")
@@ -76,14 +83,18 @@ class ActivityRecognitionProvider(private val appContext: Context) {
     fun stop() {
         if (!subscribed) return
         val pi = makePendingIntent()
-        client.removeActivityUpdates(pi)
-            .addOnSuccessListener {
-                subscribed = false
-                Log.i(TAG, "unsubscribed from activity updates")
-            }
-            .addOnFailureListener { e ->
-                Log.e(TAG, "failed to unsubscribe from activity updates", e)
-            }
+        try {
+            client.removeActivityUpdates(pi)
+                .addOnSuccessListener {
+                    subscribed = false
+                    Log.i(TAG, "unsubscribed from activity updates")
+                }
+                .addOnFailureListener { e ->
+                    Log.e(TAG, "failed to unsubscribe from activity updates", e)
+                }
+        } catch (e: SecurityException) {
+            Log.w(TAG, "ACTIVITY_RECOGNITION permission denied during unsubscribe; ignoring", e)
+        }
     }
 
     private fun makePendingIntent(): PendingIntent {

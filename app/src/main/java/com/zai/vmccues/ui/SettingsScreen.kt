@@ -31,6 +31,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -432,35 +433,35 @@ private fun PermissionsSection() {
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
-    @Suppress("UNUSED_EXPRESSION") refreshKey
-
-    GroupedSection(
-        header = "Permissions",
-        footer = "Required for the overlay and Automatic mode.",
-    ) {
-        PermissionRow("Display over other apps", "Required to draw dots on top of other apps",
-            PermissionsHelper.hasOverlayPermission(context), "Open",
-            Icons.Outlined.Warning, colors.red,
-        ) { runCatching { context.startActivity(PermissionsHelper.overlaySettingsIntent(context)) } }
-        PermissionRow("Activity Recognition", "Required for Automatic mode",
-            PermissionsHelper.hasActivityRecognition(context), "Grant",
-            Icons.Outlined.Warning, colors.red,
+    key(refreshKey) {
+        GroupedSection(
+            header = "Permissions",
+            footer = "Required for the overlay and Automatic mode.",
         ) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
-                activityRecognitionLauncher.launch(Manifest.permission.ACTIVITY_RECOGNITION)
+            PermissionRow("Display over other apps", "Required to draw dots on top of other apps",
+                PermissionsHelper.hasOverlayPermission(context), "Open",
+                Icons.Outlined.Warning, colors.red,
+            ) { runCatching { context.startActivity(PermissionsHelper.overlaySettingsIntent(context)) } }
+            PermissionRow("Activity Recognition", "Required for Automatic mode",
+                PermissionsHelper.hasActivityRecognition(context), "Grant",
+                Icons.Outlined.Warning, colors.red,
+            ) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
+                    activityRecognitionLauncher.launch(Manifest.permission.ACTIVITY_RECOGNITION)
+            }
+            PermissionRow("Notifications", "Keeps the service alive",
+                PermissionsHelper.hasPostNotifications(context), "Grant",
+                Icons.Outlined.Warning, colors.red,
+            ) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
+                    notificationsLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+            PermissionRow("Battery Optimization", "Prevents the service from being killed",
+                PermissionsHelper.isBatteryOptExempt(context), "Open",
+                Icons.Outlined.BatteryFull, colors.orange,
+                showSeparator = false,
+            ) { runCatching { context.startActivity(PermissionsHelper.batteryOptSettingsIntent(context)) } }
         }
-        PermissionRow("Notifications", "Keeps the service alive",
-            PermissionsHelper.hasPostNotifications(context), "Grant",
-            Icons.Outlined.Warning, colors.red,
-        ) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
-                notificationsLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-        }
-        PermissionRow("Battery Optimization", "Prevents the service from being killed",
-            PermissionsHelper.isBatteryOptExempt(context), "Open",
-            Icons.Outlined.BatteryFull, colors.orange,
-            showSeparator = false,
-        ) { runCatching { context.startActivity(PermissionsHelper.batteryOptSettingsIntent(context)) } }
     }
 }
 
