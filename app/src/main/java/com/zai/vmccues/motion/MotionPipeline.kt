@@ -6,6 +6,8 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.os.Handler
+import android.os.HandlerThread
 import android.os.SystemClock
 import android.util.Log
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -47,6 +49,11 @@ class MotionPipeline(context: Context) : SensorEventListener {
 
     private val gravityEstimate = FloatArray(3)
     private val integrator = DeadReckoningIntegrator()
+
+    // Dedicated HandlerThread for sensor delivery — avoids blocking the
+    // calling thread and ensures sensor callbacks don't run on the main Looper.
+    private val sensorThread = HandlerThread("MotionPipeline").apply { start() }
+    private val sensorHandler = Handler(sensorThread.looper)
 
     // Adaptive sensor rate for low-end devices.
     private val isLowEnd: Boolean by lazy {
@@ -103,12 +110,12 @@ class MotionPipeline(context: Context) : SensorEventListener {
             return
         }
         available = true
-        if (la != null) sensorManager.registerListener(this, la, sensorDelay)
+        if (la != null) sensorManager.registerListener(this, la, sensorDelay, sensorHandler)
         else if (ra != null) {
-            sensorManager.registerListener(this, ra, sensorDelay)
+            sensorManager.registerListener(this, ra, sensorDelay, sensorHandler)
             Log.i(TAG, "using TYPE_ACCELEROMETER fallback")
         }
-        sensorManager.registerListener(this, rot, sensorDelay)
+        sensorManager.registerListener(this, rot, sensorDelay, sensorHandler)
         lastTickMs = SystemClock.elapsedRealtime()
         Log.i(TAG, "pipeline started (sensorDelay=$sensorDelay, lowEnd=$isLowEnd)")
     }
@@ -120,6 +127,10 @@ class MotionPipeline(context: Context) : SensorEventListener {
         _rawForce.value = ForceVector.ZERO
         _filteredForce.value = ForceVector.ZERO
         Log.i(TAG, "pipeline stopped")
+    }
+
+    fun destroy() {
+        sensorThread.quitSafely()
     }
 
     override fun onSensorChanged(event: SensorEvent) {

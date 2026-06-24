@@ -57,8 +57,8 @@ class OverlayService : Service() {
     private lateinit var pipeline: MotionPipeline
     private lateinit var gate: ContextGate
     private lateinit var windowManager: WindowManager
-    private var overlayView: DotOverlayView? = null
-    private var overlayAttached = false
+    @Volatile private var overlayView: DotOverlayView? = null
+    @Volatile private var overlayAttached = false
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var settingsJob: Job? = null
@@ -103,6 +103,7 @@ class OverlayService : Service() {
         settingsJob?.cancel()
         gate.stop()
         pipeline.stop()
+        pipeline.destroy()
         removeOverlay()
         scope.cancel()
         Log.i(TAG, "OverlayService destroyed")

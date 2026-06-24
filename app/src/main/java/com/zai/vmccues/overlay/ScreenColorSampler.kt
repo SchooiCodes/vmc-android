@@ -108,12 +108,18 @@ class ScreenColorSampler(context: Context) {
             if (w <= 0 || h <= 0) return wallpaperBitmap
 
             val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
-            val canvas = Canvas(bmp)
-            drawable.setBounds(0, 0, w, h)
-            drawable.draw(canvas)
-            wallpaperBitmap?.recycle()
-            wallpaperBitmap = bmp
-            bmp
+            try {
+                val canvas = Canvas(bmp)
+                drawable.setBounds(0, 0, w, h)
+                drawable.draw(canvas)
+                wallpaperBitmap?.recycle()
+                wallpaperBitmap = bmp
+                bmp
+            } catch (e: Exception) {
+                bmp.recycle()
+                Log.w(TAG, "failed to draw wallpaper", e)
+                wallpaperBitmap
+            }
         } catch (e: Exception) {
             Log.w(TAG, "failed to sample wallpaper", e)
             wallpaperBitmap
