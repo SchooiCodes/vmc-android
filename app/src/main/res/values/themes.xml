@@ -1,0 +1,10 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Launch theme — iOS Settings light background. Compose takes over
+         rendering immediately, so this is only visible for the first frame. -->
+    <style name="Theme.VmcCues" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">@color/ios_grouped_bg</item>
+        <item name="android:navigationBarColor">@color/ios_grouped_bg</item>
+        <item name="android:windowBackground">@color/ios_grouped_bg</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">true</item>
+    </style>
+</resources>

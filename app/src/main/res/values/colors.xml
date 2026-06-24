@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <!-- iOS system colors -->
+    <color name="ios_grouped_bg">#FFF2F2F7</color>
+    <color name="ios_grouped_bg_dark">#FF000000</color>
+    <color name="ios_blue">#FF007AFF</color>
+    <color name="ios_green">#FF34C759</color>
+    <color name="dot_default">#FFF5F5F5</color>
+    <color name="ic_launcher_background">#FF1A1A2E</color>
+</resources>

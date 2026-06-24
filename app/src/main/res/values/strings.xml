@@ -1,0 +1,61 @@
+<resources>
+    <string name="app_name">Vehicle Motion Cues</string>
+    <string name="qs_tile_label">Motion Cues</string>
+
+    <!-- Foreground service notification -->
+    <string name="notif_channel_id">vmc_active</string>
+    <string name="notif_channel_name">Motion Cues active</string>
+    <string name="notif_channel_desc">Shown while the motion-cue overlay is running.</string>
+    <string name="notif_title">Vehicle Motion Cues is on</string>
+    <string name="notif_text">Peripheral dots are tracking vehicle motion. Tap to open.</string>
+
+    <!-- Settings UI -->
+    <string name="settings_title">Vehicle Motion Cues</string>
+    <string name="settings_subtitle">Accessibility · Motion</string>
+    <string name="mode_off">Off</string>
+    <string name="mode_on">On</string>
+    <string name="mode_automatic">Automatic</string>
+    <string name="mode_off_desc">Disabled entirely</string>
+    <string name="mode_on_desc">Always show dots</string>
+    <string name="mode_automatic_desc">Only when you\'re a passenger in a moving vehicle</string>
+
+    <string name="section_appearance">Customize Appearance</string>
+    <string name="appearance_pattern">Pattern</string>
+    <string name="pattern_regular">Regular</string>
+    <string name="pattern_dynamic">Dynamic</string>
+    <string name="appearance_color">Dot Color</string>
+    <string name="appearance_auto_contrast">Auto-Contrast</string>
+    <string name="appearance_auto_contrast_desc">Adjust saturation to stay visible against busy backgrounds</string>
+    <string name="appearance_larger">Larger Dots</string>
+    <string name="appearance_more">More Dots</string>
+
+    <string name="section_tuning">Tuning</string>
+    <string name="tuning_sensitivity">Sensitivity</string>
+    <string name="tuning_smoothing">Smoothing</string>
+
+    <string name="section_permissions">Permissions</string>
+    <string name="perm_overlay">Display over other apps</string>
+    <string name="perm_overlay_desc">Required to draw the dot overlay on top of other apps.</string>
+    <string name="perm_activity">Activity Recognition</string>
+    <string name="perm_activity_desc">Required for Automatic mode to detect when you\'re in a vehicle.</string>
+    <string name="perm_notifications">Notifications</string>
+    <string name="perm_notifications_desc">Required to keep the service alive with a visible notification.</string>
+    <string name="perm_battery">Battery Optimization</string>
+    <string name="perm_battery_desc">Recommended so the service isn\'t killed in the background.</string>
+
+    <string name="action_grant">Grant</string>
+    <string name="action_granted">Granted</string>
+    <string name="action_open_settings">Open Settings</string>
+    <string name="action_reset">Reset to defaults</string>
+
+    <!-- Safety disclaimer (Layer 5) -->
+    <string name="safety_title">Passenger-only feature</string>
+    <string name="safety_body">Vehicle Motion Cues is designed for passengers, not drivers. Do not use this feature while operating a moving vehicle, or in any situation requiring attention to safety. It works best when you\'re seated facing forward.</string>
+    <string name="safety_ack">I understand</string>
+
+    <!-- Quick toggle (in-app) -->
+    <string name="toggle_start">Start</string>
+    <string name="toggle_stop">Stop</string>
+    <string name="status_running">Cues active</string>
+    <string name="status_stopped">Cues off</string>
+</resources>
