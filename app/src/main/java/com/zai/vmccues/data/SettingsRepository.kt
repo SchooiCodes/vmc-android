@@ -31,6 +31,7 @@ class SettingsRepository(private val appContext: Context) {
         val PATTERN = stringPreferencesKey("pattern")
         val DOT_COLOR = intPreferencesKey("dot_color")
         val AUTO_CONTRAST = booleanPreferencesKey("auto_contrast")
+        val ADAPTIVE_CONTRAST = booleanPreferencesKey("adaptive_contrast")
         val LARGER_DOTS = booleanPreferencesKey("larger_dots")
         val MORE_DOTS = booleanPreferencesKey("more_dots")
         val SENSITIVITY = floatPreferencesKey("sensitivity")
@@ -52,17 +53,18 @@ class SettingsRepository(private val appContext: Context) {
         pattern = DotPattern.fromName(this[Keys.PATTERN]),
         dotColor = this[Keys.DOT_COLOR] ?: 0xFFF5F5F5.toInt(),
         autoContrast = this[Keys.AUTO_CONTRAST] ?: true,
+        adaptiveContrast = this[Keys.ADAPTIVE_CONTRAST] ?: true,
         largerDots = this[Keys.LARGER_DOTS] ?: false,
         moreDots = this[Keys.MORE_DOTS] ?: false,
-        sensitivity = this[Keys.SENSITIVITY] ?: 1.0f,
-        filterAlpha = this[Keys.FILTER_ALPHA] ?: 0.2f,
-        dampingCoef = this[Keys.DAMPING_COEF] ?: 6.0f,
-        returnToCenterCoef = this[Keys.RETURN_TO_CENTER] ?: 2.0f,
-        inputClamp = this[Keys.INPUT_CLAMP] ?: 7.0f,
-        deadzone = this[Keys.DEADZONE] ?: 0.3f,
-        dotOpacity = this[Keys.DOT_OPACITY] ?: 0.35f,
-        dotInsetDp = this[Keys.DOT_INSET] ?: 18f,
-        intensityResponse = this[Keys.INTENSITY_RESPONSE] ?: 0.5f,
+        sensitivity = this[Keys.SENSITIVITY] ?: 1.2f,
+        filterAlpha = this[Keys.FILTER_ALPHA] ?: 0.18f,
+        dampingCoef = this[Keys.DAMPING_COEF] ?: 5.5f,
+        returnToCenterCoef = this[Keys.RETURN_TO_CENTER] ?: 2.5f,
+        inputClamp = this[Keys.INPUT_CLAMP] ?: 8.0f,
+        deadzone = this[Keys.DEADZONE] ?: 0.25f,
+        dotOpacity = this[Keys.DOT_OPACITY] ?: 0.45f,
+        dotInsetDp = this[Keys.DOT_INSET] ?: 16f,
+        intensityResponse = this[Keys.INTENSITY_RESPONSE] ?: 0.6f,
         gateEntryDelayMs = this[Keys.GATE_ENTRY_MS] ?: 5_000L,
         gateExitGraceMs = this[Keys.GATE_EXIT_MS] ?: 4_000L,
         safetyAcknowledged = this[Keys.SAFETY_ACK] ?: false,
@@ -79,6 +81,7 @@ class SettingsRepository(private val appContext: Context) {
             p[Keys.PATTERN] = next.pattern.name
             p[Keys.DOT_COLOR] = next.dotColor
             p[Keys.AUTO_CONTRAST] = next.autoContrast
+            p[Keys.ADAPTIVE_CONTRAST] = next.adaptiveContrast
             p[Keys.LARGER_DOTS] = next.largerDots
             p[Keys.MORE_DOTS] = next.moreDots
             p[Keys.SENSITIVITY] = next.sensitivity
@@ -100,6 +103,7 @@ class SettingsRepository(private val appContext: Context) {
     suspend fun setPattern(pattern: DotPattern) = update { it.copy(pattern = pattern) }
     suspend fun setDotColor(color: Int) = update { it.copy(dotColor = color) }
     suspend fun setAutoContrast(v: Boolean) = update { it.copy(autoContrast = v) }
+    suspend fun setAdaptiveContrast(v: Boolean) = update { it.copy(adaptiveContrast = v) }
     suspend fun setLargerDots(v: Boolean) = update { it.copy(largerDots = v) }
     suspend fun setMoreDots(v: Boolean) = update { it.copy(moreDots = v) }
     suspend fun setSensitivity(v: Float) = update { it.copy(sensitivity = v) }

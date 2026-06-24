@@ -342,7 +342,7 @@ fun LivePreview(settings: CueSettings, modifier: Modifier = Modifier) {
                 // the dot visible on any background — Apple's auto-contrast.
                  if (settings.autoContrast) {
                     drawCircle(
-                        color = Color(ringColorArgb.toInt() and 0x00FFFFFF or ((alpha * 0.35f * 255).toInt() shl 24)),
+                        color = Color(ringColorArgb.toInt() and 0x00FFFFFF or ((alpha * 0.40f * 255).toInt() shl 24)),
                         radius = r + ringWidthPx,
                         center = Offset(cx, cy),
                     )
@@ -391,8 +391,8 @@ private const val MAX_DT_SEC = 0.1f
 
 // Dot base radii in dp — mirrors DotOverlayView.BASE_RADIUS (7f) /
 // LARGER_RADIUS (12f) — scaled down by PREVIEW_RADIUS_SCALE for the preview.
-private const val BASE_RADIUS_DP = 7f
-private const val LARGER_RADIUS_DP = 12f
+private const val BASE_RADIUS_DP = 6.5f
+private const val LARGER_RADIUS_DP = 11f
 
 // Longitudinal pulse: a short 2.5 m/s² "brake" burst every 4 seconds.
 private const val PULSE_PERIOD_SEC = 4f

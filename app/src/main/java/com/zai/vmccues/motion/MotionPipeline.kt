@@ -1,5 +1,6 @@
 package com.zai.vmccues.motion
 
+import android.app.ActivityManager
 import android.content.Context
 import android.hardware.Sensor
 import android.hardware.SensorEvent
@@ -20,6 +21,9 @@ import kotlinx.coroutines.flow.asStateFlow
  * [DeadReckoningIntegrator] (spec Part B.3) which integrates acceleration →
  * velocity → position with critical damping, producing the negated position
  * that drives dot displacement.
+ *
+ * Low-end optimization: uses SENSOR_DELAY_UI (~50ms) on low-end devices
+ * instead of SENSOR_DELAY_GAME (~20ms) to reduce CPU usage.
  *
  * Emits the final dot displacement (in pixels) via [dotOffset].
  */
@@ -44,6 +48,18 @@ class MotionPipeline(context: Context) : SensorEventListener {
     private val gravityEstimate = FloatArray(3)
     private val integrator = DeadReckoningIntegrator()
 
+    // Adaptive sensor rate for low-end devices.
+    private val isLowEnd: Boolean by lazy {
+        val am = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager ?: return@lazy false
+        val memInfo = ActivityManager.MemoryInfo()
+        am.getMemoryInfo(memInfo)
+        val totalMemGB = memInfo.totalMem / (1024.0 * 1024.0 * 1024.0)
+        val cores = Runtime.getRuntime().availableProcessors()
+        totalMemGB <= 3.0 || cores <= 4
+    }
+    private val sensorDelay: Int
+        get() = if (isLowEnd) SensorManager.SENSOR_DELAY_UI else SensorManager.SENSOR_DELAY_GAME
+
     /** Latest dot displacement in pixels (negated position from the integrator). */
     private val _dotOffset = MutableStateFlow(ForceVector.ZERO)
     val dotOffset: StateFlow<ForceVector> = _dotOffset.asStateFlow()
@@ -64,9 +80,8 @@ class MotionPipeline(context: Context) : SensorEventListener {
     private val latestRotation = FloatArray(5)
     private var lastTickMs: Long = 0L
 
-    // Configurable parameters (pushed from settings).
-    @Volatile private var deadzone: Float = 0.3f
-    @Volatile private var sensitivity: Float = 1.0f
+    @Volatile private var deadzone: Float = 0.25f
+    @Volatile private var sensitivity: Float = 1.2f
 
     fun start(
         filterAlpha: Float,
@@ -88,14 +103,14 @@ class MotionPipeline(context: Context) : SensorEventListener {
             return
         }
         available = true
-        if (la != null) sensorManager.registerListener(this, la, SensorManager.SENSOR_DELAY_GAME)
+        if (la != null) sensorManager.registerListener(this, la, sensorDelay)
         else if (ra != null) {
-            sensorManager.registerListener(this, ra, SensorManager.SENSOR_DELAY_GAME)
+            sensorManager.registerListener(this, ra, sensorDelay)
             Log.i(TAG, "using TYPE_ACCELEROMETER fallback")
         }
-        sensorManager.registerListener(this, rot, SensorManager.SENSOR_DELAY_GAME)
+        sensorManager.registerListener(this, rot, sensorDelay)
         lastTickMs = SystemClock.elapsedRealtime()
-        Log.i(TAG, "pipeline started")
+        Log.i(TAG, "pipeline started (sensorDelay=$sensorDelay, lowEnd=$isLowEnd)")
     }
 
     fun stop() {
@@ -134,19 +149,15 @@ class MotionPipeline(context: Context) : SensorEventListener {
         val dt = if (lastTickMs > 0) Math.min(0.1f, (now - lastTickMs) / 1000f) else 1f / 60f
         lastTickMs = now
 
-        // Transform device-frame → vehicle-frame.
         val vehicle = VehicleFrame.transform(latestRotation, ax, ay, az)
         _rawForce.value = vehicle
 
-        // Apply dead-band (spec B.4): zero out forces below the noise floor.
         val dampedLat = if (Math.abs(vehicle.lateral) < deadzone) 0f else vehicle.lateral
         val dampedLon = if (Math.abs(vehicle.longitudinal) < deadzone) 0f else vehicle.longitudinal
         val damped = ForceVector(dampedLat, dampedLon)
         _filteredForce.value = damped
 
-        // Dead-reckoning integration (spec B.3).
         val offset = integrator.update(damped, dt)
-        // Apply user sensitivity.
         _dotOffset.value = ForceVector(
             lateral = offset.lateral * sensitivity,
             longitudinal = offset.longitudinal * sensitivity,
