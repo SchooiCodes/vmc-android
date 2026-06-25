@@ -38,7 +38,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zai.vmccues.data.CueSettings
 import com.zai.vmccues.data.DotPattern
-import com.zai.vmccues.data.DotVisibility
 import com.zai.vmccues.motion.VehicleFrame
 import com.zai.vmccues.ui.components.PreviewUtilities
 import kotlin.math.PI
@@ -154,22 +153,64 @@ fun CarSimulationScreen(
                 )
             }
 
-            // Force readout
+            // Force readout + sensor diagnostics
             val latN = (smoothLat * 4f)
             val lonN = (smoothLon * 3f)
-            Box(
+            Column(
                 modifier = Modifier
                     .align(Alignment.TopStart)
                     .padding(12.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .background(Color.Black.copy(alpha = 0.7f))
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                    .padding(12.dp),
             ) {
                 Text(
-                    text = "Lat: ${"%.2f".format(latN)} m/s²\nLon: ${"%.2f".format(lonN)} m/s²",
+                    text = "Force Input",
+                    color = Color(0xFF90CAF9),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    text = "Lat: ${"%.2f".format(latN)} m/s²",
                     color = Color.White,
                     fontSize = 12.sp,
-                    lineHeight = 16.sp,
+                )
+                Text(
+                    text = "Lon: ${"%.2f".format(lonN)} m/s²",
+                    color = Color.White,
+                    fontSize = 12.sp,
+                )
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text = "Sensor Status",
+                    color = Color(0xFF90CAF9),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    text = "Mode: ${settings.mode}",
+                    color = Color(0xFFB0BEC5),
+                    fontSize = 11.sp,
+                )
+                Text(
+                    text = "Sensitivity: ${"%.1f".format(settings.sensitivity)}\u00D7",
+                    color = Color(0xFFB0BEC5),
+                    fontSize = 11.sp,
+                )
+                Text(
+                    text = "Deadzone: ${"%.2f".format(settings.deadzone)} m/s²",
+                    color = Color(0xFFB0BEC5),
+                    fontSize = 11.sp,
+                )
+                Text(
+                    text = "Opacity: ${(settings.dotOpacity * 100).toInt()}%",
+                    color = Color(0xFFB0BEC5),
+                    fontSize = 11.sp,
+                )
+                Text(
+                    text = "Dots: ${if (settings.moreDots) "More" else "Standard"} ${if (settings.largerDots) "+ Larger" else ""}",
+                    color = Color(0xFFB0BEC5),
+                    fontSize = 11.sp,
                 )
             }
         }
@@ -260,20 +301,10 @@ private fun DrawScope.drawTestDots(
     val inset = 20f * density
     val dotColor = Color(settings.dotColor)
 
-    val sideCount = when (settings.visibility) {
-        DotVisibility.MORE_DOTS -> 10
-        DotVisibility.LARGER_DOTS -> 6
-        DotVisibility.STANDARD -> 6
-    }
-    val endCount = when (settings.visibility) {
-        DotVisibility.MORE_DOTS -> 4
-        else -> 2
-    }
+    val sideCount = if (settings.moreDots) 10 else 6
+    val endCount = if (settings.moreDots) 4 else 2
     val exclusion = 0.35f
-    val baseRadius = when (settings.visibility) {
-        DotVisibility.LARGER_DOTS -> 11f
-        else -> 6.5f
-    } * density * 0.8f
+    val baseRadius = (if (settings.largerDots) 11f else 6.5f) * density * 0.8f
     val ringWidth = 0.5f * density
 
     // Intensity for opacity

@@ -31,19 +31,3 @@ enum class DotPattern {
         val DEFAULT = REGULAR
     }
 }
-
-/**
- * Visibility option (Apple: "Visibility: Larger Dots or More Dots").
- * Mutually exclusive — only one can be active at a time.
- */
-enum class DotVisibility {
-    STANDARD,
-    LARGER_DOTS,
-    MORE_DOTS;
-
-    companion object {
-        fun fromName(name: String?): DotVisibility =
-            entries.firstOrNull { it.name == name } ?: DEFAULT
-        val DEFAULT = STANDARD
-    }
-}

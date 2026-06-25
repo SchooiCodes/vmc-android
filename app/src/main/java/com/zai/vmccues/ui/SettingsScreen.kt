@@ -31,9 +31,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
@@ -66,7 +63,6 @@ import com.zai.vmccues.VmcApplication
 import com.zai.vmccues.data.ActivationMode
 import com.zai.vmccues.data.CueSettings
 import com.zai.vmccues.data.DotPattern
-import com.zai.vmccues.data.DotVisibility
 import com.zai.vmccues.overlay.OverlayService
 import com.zai.vmccues.ui.components.ColorPickerDialog
 import kotlinx.coroutines.launch
@@ -142,20 +138,28 @@ fun SettingsScreen(onBack: () -> Unit = {}, modifier: Modifier = Modifier) {
         // Appearance section
         SectionCard(header = "Appearance") {
             // Pattern
-            RowSetting(title = "Pattern") {
-                SingleChoiceSegmentedButtonRow {
-                    SegmentedButton(
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text("Pattern", style = MaterialTheme.typography.bodyLarge)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    androidx.compose.material3.FilterChip(
                         selected = settings.pattern == DotPattern.REGULAR,
                         onClick = { scope.launch { repo.setPattern(DotPattern.REGULAR) } },
-                        shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
-                    ) { Text("Regular") }
-                    SegmentedButton(
+                        label = { Text("Regular") },
+                    )
+                    androidx.compose.material3.FilterChip(
                         selected = settings.pattern == DotPattern.DYNAMIC,
                         onClick = { scope.launch { repo.setPattern(DotPattern.DYNAMIC) } },
-                        shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
-                    ) { Text("Dynamic") }
+                        label = { Text("Dynamic") },
+                    )
                 }
             }
+            Box(Modifier.fillMaxWidth().padding(start = 16.dp).height(0.5.dp).background(MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)))
             // Color
             RowSetting(title = "Color", onClick = { showColorPicker = true }) {
                 Box(
@@ -171,19 +175,18 @@ fun SettingsScreen(onBack: () -> Unit = {}, modifier: Modifier = Modifier) {
                 checked = settings.adaptiveContrast,
                 onCheckedChange = { v -> scope.launch { repo.setAdaptiveContrast(v) } },
             )
-            // Visibility
-            RowSetting(title = "Visibility", showSeparator = false) {
-                SingleChoiceSegmentedButtonRow {
-                    val labels = listOf("Standard", "Larger", "More")
-                    DotVisibility.entries.forEachIndexed { i, vis ->
-                        SegmentedButton(
-                            selected = settings.visibility == vis,
-                            onClick = { scope.launch { repo.setVisibility(vis) } },
-                            shape = SegmentedButtonDefaults.itemShape(index = i, count = 3),
-                        ) { Text(labels[i]) }
-                    }
-                }
-            }
+            // Larger Dots
+            SwitchSetting(
+                title = "Larger Dots",
+                checked = settings.largerDots,
+                onCheckedChange = { v -> scope.launch { repo.setLargerDots(v) } },
+            )
+            // More Dots
+            SwitchSetting(
+                title = "More Dots",
+                checked = settings.moreDots,
+                onCheckedChange = { v -> scope.launch { repo.setMoreDots(v) } },
+            )
         }
 
         // Response section

@@ -10,9 +10,10 @@ class CueSettingsTest {
         val s = CueSettings()
         assertEquals(ActivationMode.ON, s.mode)
         assertEquals(DotPattern.REGULAR, s.pattern)
-        assertEquals(DotVisibility.STANDARD, s.visibility)
         assertTrue(s.autoContrast)
         assertTrue(s.adaptiveContrast)
+        assertFalse(s.largerDots)
+        assertFalse(s.moreDots)
         assertFalse(s.safetyAcknowledged)
     }
 
@@ -111,19 +112,21 @@ class CueSettingsTest {
         val s = CueSettings(
             mode = ActivationMode.AUTOMATIC,
             pattern = DotPattern.DYNAMIC,
-            visibility = DotVisibility.MORE_DOTS,
             sensitivity = 1.8f,
             filterAlpha = 0.25f,
             dampingCoef = 7f,
             deadzone = 0.3f,
+            largerDots = true,
+            moreDots = true,
         )
         assertEquals(ActivationMode.AUTOMATIC, s.mode)
         assertEquals(DotPattern.DYNAMIC, s.pattern)
-        assertEquals(DotVisibility.MORE_DOTS, s.visibility)
         assertEquals(1.8f, s.sensitivity)
         assertEquals(0.25f, s.filterAlpha)
         assertEquals(7f, s.dampingCoef)
         assertEquals(0.3f, s.deadzone)
+        assertTrue(s.largerDots)
+        assertTrue(s.moreDots)
     }
 
     @Test

@@ -4,7 +4,6 @@ import android.app.ActivityManager
 import android.content.Context
 import android.graphics.Color
 import com.zai.vmccues.data.DotPattern
-import com.zai.vmccues.data.DotVisibility
 import com.zai.vmccues.motion.ForceVector
 
 /**
@@ -25,12 +24,12 @@ object PreviewUtilities {
     }
 
     /**
-     * Adjust the user-chosen dot color's saturation and brightness to maintain
-     * contrast against the current background, without replacing the hue.
+     * Adjust the user-chosen dot color's brightness and saturation to maintain
+     * visible contrast against the current background, without replacing the hue.
      * Mirrors Apple's "saturation auto-adjusts to maintain contrast" behavior.
      *
-     * - Light background: desaturate by ~30%, boost brightness so the dot is visible
-     * - Dark background: keep saturation, ensure brightness is sufficient
+     * - Light background: darken the dot significantly so it stands out
+     * - Dark background: brighten the dot so it's visible
      */
     fun adjustSaturationForContrast(color: Int, bgLight: Boolean): Int {
         val hsv = FloatArray(3)
@@ -41,19 +40,18 @@ object PreviewUtilities {
         val alpha = Color.alpha(color)
 
         if (bgLight) {
-            // Background is light — desaturate and darken the dot so it stands out.
-            sat = (sat * 0.7f).coerceIn(0f, 1f)
-            value = (value * 0.75f).coerceIn(0f, 1f)
+            // Background is light — darken the dot, boost saturation for visibility.
+            value = (value * 0.45f).coerceIn(0f, 1f)
+            sat = (sat * 1.2f).coerceIn(0f, 1f)
         } else {
-            // Background is dark — boost brightness slightly, keep saturation.
-            value = (value * 1.1f).coerceIn(0f, 1f)
-            sat = (sat * 1.05f).coerceIn(0f, 1f)
+            // Background is dark — brighten the dot significantly.
+            value = (value * 1.4f + 0.3f).coerceIn(0f, 1f)
+            sat = (sat * 0.9f).coerceIn(0f, 1f)
         }
 
         hsv[1] = sat
         hsv[2] = value
         val adjusted = Color.HSVToColor(hsv)
-        // Preserve original alpha
         return (adjusted and 0x00FFFFFF) or (alpha shl 24)
     }
 
