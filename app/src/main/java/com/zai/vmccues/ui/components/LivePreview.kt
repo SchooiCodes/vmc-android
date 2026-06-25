@@ -398,7 +398,7 @@ private const val LARGER_RADIUS_DP = 11f
 // Longitudinal pulse: a short 2.5 m/s² "brake" burst every 4 seconds.
 private const val PULSE_PERIOD_SEC = 4f
 private const val PULSE_DURATION_SEC = 0.4f
-private const val PULSE_AMPLITUDE = 2.5f
+private const val PULSE_AMPLITUDE = 3.5f
 
 // Fake-content paragraph line-width fractions (sum of widths, not positions).
 private val PARAGRAPH_1_FRACTIONS = floatArrayOf(0.92f, 0.88f, 0.95f, 0.60f, 0.90f, 0.85f, 0.70f)
@@ -416,16 +416,12 @@ private fun isLightColor(color: Int): Boolean = PreviewUtilities.isLightColor(co
  * - Longitudinal: sine wave + periodic pulse for accel/brake
  */
 private fun simulateForces(t: Float): Pair<Float, Float> {
-    // Lateral force: slow sine wave simulating cornering (period 4s)
-    val lateral = (1.2f * kotlin.math.sin(t * kotlin.math.PI / 2f)).toFloat()
-    
-    // Longitudinal: sine wave + periodic "brake" pulse
-    val sine = (0.8f * kotlin.math.sin(t * kotlin.math.PI / 1.5f)).toFloat()
+    val lateral = (2.5f * kotlin.math.sin(t * kotlin.math.PI / 1.8f)).toFloat()
+    val sine = (1.5f * kotlin.math.sin(t * kotlin.math.PI / 1.2f)).toFloat()
     val pulsePhase = (t % PULSE_PERIOD_SEC) / PULSE_PERIOD_SEC
     val pulse = if (pulsePhase < PULSE_DURATION_SEC / PULSE_PERIOD_SEC) {
         (-PULSE_AMPLITUDE * kotlin.math.sin(pulsePhase * kotlin.math.PI / (PULSE_DURATION_SEC / PULSE_PERIOD_SEC))).toFloat()
     } else 0f
-    
     val longitudinal = sine + pulse
     return Pair(lateral, longitudinal)
 }

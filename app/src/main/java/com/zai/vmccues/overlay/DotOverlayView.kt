@@ -34,17 +34,11 @@ class DotOverlayView @JvmOverloads constructor(
 
     private val colorSampler = ScreenColorSampler(context)
     private val isLowEnd: Boolean by lazy { detectLowEnd() }
-    private var targetFrameIntervalMs: Long = if (isLowEnd) 33L else 16L
-    private var lastFrameTimeMs: Long = 0L
 
     private val choreographer = Choreographer.getInstance()
     private val frameCallback = object : Choreographer.FrameCallback {
         override fun doFrame(frameTimeNanos: Long) {
-            val now = SystemClock.elapsedRealtime()
-            if (now - lastFrameTimeMs >= targetFrameIntervalMs) {
-                lastFrameTimeMs = now
-                invalidate()
-            }
+            invalidate()
             choreographer.postFrameCallback(this)
         }
     }
@@ -70,7 +64,6 @@ class DotOverlayView @JvmOverloads constructor(
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
         choreographer.removeFrameCallback(frameCallback)
-        lastFrameTimeMs = SystemClock.elapsedRealtime()
         choreographer.postFrameCallback(frameCallback)
     }
     override fun onDetachedFromWindow() {
@@ -137,22 +130,22 @@ class DotOverlayView @JvmOverloads constructor(
 
         val now = SystemClock.elapsedRealtime() / 1000f
         val dotColor = s.dotColor
-        val isAdaptive = s.adaptiveContrast && s.autoContrast
+        val useAdaptive = s.adaptiveContrast
 
         var bgLight = false
-        if (isAdaptive && scrW > 0 && scrH > 0) {
+        if (useAdaptive && scrW > 0 && scrH > 0) {
             bgLight = colorSampler.isBackgroundLight(scrW / 2f, scrH / 2f, scrW, scrH)
         }
 
         val ringColor: Int
         val fillColor: Int
-        if (isAdaptive) {
+        if (useAdaptive) {
             if (bgLight) {
-                ringColor = COLOR_DARK
                 fillColor = COLOR_DARK
+                ringColor = if (s.autoContrast) COLOR_LIGHT else COLOR_DARK
             } else {
-                ringColor = COLOR_LIGHT
                 fillColor = COLOR_LIGHT
+                ringColor = if (s.autoContrast) COLOR_DARK else COLOR_LIGHT
             }
         } else if (s.autoContrast) {
             ringColor = if (isLightColor(dotColor)) COLOR_DARK else COLOR_LIGHT
@@ -192,7 +185,7 @@ class DotOverlayView @JvmOverloads constructor(
             cx = cx.coerceIn(maxDotR, scrW - maxDotR)
             cy = cy.coerceIn(maxDotR, scrH - maxDotR)
 
-            if (isAdaptive || s.autoContrast) {
+            if (ringColor != 0) {
                 val a = (alpha * 255).toInt()
                 ringPaint.color = (ringAlphaInt * a / 255 shl 24) or (ringColor and 0x00FFFFFF)
                 canvas.drawCircle(cx, cy, r + ringWidth, ringPaint)
@@ -219,7 +212,7 @@ class DotOverlayView @JvmOverloads constructor(
         am.getMemoryInfo(memInfo)
         val totalMemGB = memInfo.totalMem / (1024.0 * 1024.0 * 1024.0)
         val cores = Runtime.getRuntime().availableProcessors()
-        return totalMemGB <= 3.0 || cores <= 4
+        return totalMemGB <= 2.0 || cores <= 2
     }
 
     companion object {

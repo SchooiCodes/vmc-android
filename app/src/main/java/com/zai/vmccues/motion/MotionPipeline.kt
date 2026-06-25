@@ -62,7 +62,7 @@ class MotionPipeline(context: Context) : SensorEventListener {
         am.getMemoryInfo(memInfo)
         val totalMemGB = memInfo.totalMem / (1024.0 * 1024.0 * 1024.0)
         val cores = Runtime.getRuntime().availableProcessors()
-        totalMemGB <= 3.0 || cores <= 4
+        totalMemGB <= 2.0 || cores <= 2
     }
     private val sensorDelay: Int
         get() = if (isLowEnd) SensorManager.SENSOR_DELAY_UI else SensorManager.SENSOR_DELAY_GAME
