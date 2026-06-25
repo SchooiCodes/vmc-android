@@ -151,6 +151,6 @@ object VehicleFrame {
     }
 
     private const val DEFAULT_DEADZONE = 0.15f        // m/s^2
-    private const val SCALE_PX_PER_G = 18f    // px per m/s^2
-    private const val DEFAULT_MAX_PX = 120f
+    private const val SCALE_PX_PER_G = 30f    // px per m/s^2
+    private const val DEFAULT_MAX_PX = 150f
 }

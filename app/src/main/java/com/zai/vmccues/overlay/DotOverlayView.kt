@@ -248,8 +248,8 @@ class DotOverlayView @JvmOverloads constructor(
         private const val BASE_RADIUS = 6.5f
         private const val LARGER_RADIUS = 11f
         private const val CENTER_EXCLUSION = 0.35f
-        private const val VISUAL_LERP = 0.14f
-        private const val OPACITY_LERP = 0.12f
+        private const val VISUAL_LERP = 0.35f
+        private const val OPACITY_LERP = 0.25f
         private const val RING_OPACITY = 0.40f
         private const val WOBBLE_AMPLITUDE = 1.5f
         private const val WOBBLE_FREQ = 1.3f

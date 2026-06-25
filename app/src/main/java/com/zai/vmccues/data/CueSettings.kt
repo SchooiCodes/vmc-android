@@ -15,7 +15,7 @@ data class CueSettings(
     val adaptiveContrast: Boolean = true,
 
     /** 0.5f..2.0f — overall sensitivity multiplier on dot displacement. */
-    val sensitivity: Float = 1.2f,
+    val sensitivity: Float = 1.5f,
 
     // --- Dead-reckoning integrator (spec Part B.3) ---
     /** 0.10f..0.30f — low-pass filter coefficient (lower = smoother, more lag). */

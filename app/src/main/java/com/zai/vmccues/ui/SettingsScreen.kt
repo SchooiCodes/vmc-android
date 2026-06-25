@@ -6,9 +6,9 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -20,15 +20,24 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.BatteryFull
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -43,6 +52,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -59,12 +69,6 @@ import com.zai.vmccues.data.DotPattern
 import com.zai.vmccues.data.DotVisibility
 import com.zai.vmccues.overlay.OverlayService
 import com.zai.vmccues.ui.components.ColorPickerDialog
-import com.zai.vmccues.ui.components.GroupedSection
-import com.zai.vmccues.ui.components.IosSegmentedControl
-import com.zai.vmccues.ui.components.IosSlider
-import com.zai.vmccues.ui.components.IosSwitch
-import com.zai.vmccues.ui.components.SettingsRow
-import com.zai.vmccues.ui.theme.IosTheme
 import kotlinx.coroutines.launch
 
 @Composable
@@ -87,7 +91,7 @@ fun SettingsScreen(onBack: () -> Unit = {}, modifier: Modifier = Modifier) {
             .background(MaterialTheme.colorScheme.background)
             .verticalScroll(scroll),
     ) {
-        // --- Header ---
+        // Header
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -96,229 +100,141 @@ fun SettingsScreen(onBack: () -> Unit = {}, modifier: Modifier = Modifier) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             TextButton(onClick = onBack) {
-                Text("Done", color = IosTheme.colors.blue)
+                Text("Done")
             }
             Spacer(Modifier.weight(1f))
             Text(
                 text = "Settings",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onBackground,
             )
             Spacer(Modifier.weight(1f))
-            Spacer(Modifier.width(64.dp)) // Balance
+            Spacer(Modifier.width(64.dp))
         }
 
-        // --- Section: Mode ---
-        GroupedSection(
-            footer = when (settings.mode) {
-                ActivationMode.OFF -> "Motion cues are off."
-                ActivationMode.ON -> "Dots always shown while service runs."
-                ActivationMode.AUTOMATIC -> "Dots appear when in a moving vehicle."
-            },
-        ) {
-            SettingsRow(
-                title = "Off",
-                trailing = { if (settings.mode == ActivationMode.OFF) CheckMark() },
-                showSeparator = true,
-                onClick = {
-                    scope.launch {
-                        repo.setMode(ActivationMode.OFF)
-                        OverlayService.stop(context)
-                    }
-                },
-            )
-            SettingsRow(
-                title = "On",
-                trailing = { if (settings.mode == ActivationMode.ON) CheckMark() },
-                showSeparator = true,
-                onClick = {
-                    scope.launch {
-                        repo.setMode(ActivationMode.ON)
-                        OverlayService.start(context)
-                    }
-                },
-            )
-            SettingsRow(
-                title = "Automatic",
-                trailing = { if (settings.mode == ActivationMode.AUTOMATIC) CheckMark() },
-                showSeparator = false,
-                onClick = {
-                    scope.launch {
-                        repo.setMode(ActivationMode.AUTOMATIC)
-                        OverlayService.start(context)
-                    }
-                },
-            )
+        // Mode section
+        SectionCard(header = "Mode") {
+            ModeOption("Off", settings.mode == ActivationMode.OFF) {
+                scope.launch {
+                    repo.setMode(ActivationMode.OFF)
+                    OverlayService.stop(context)
+                }
+            }
+            ModeOption("On", settings.mode == ActivationMode.ON) {
+                scope.launch {
+                    repo.setMode(ActivationMode.ON)
+                    OverlayService.start(context)
+                }
+            }
+            ModeOption("Automatic", settings.mode == ActivationMode.AUTOMATIC, showSeparator = false) {
+                scope.launch {
+                    repo.setMode(ActivationMode.AUTOMATIC)
+                    OverlayService.start(context)
+                }
+            }
         }
+        SectionFooter(when (settings.mode) {
+            ActivationMode.OFF -> "Motion cues are off."
+            ActivationMode.ON -> "Dots always shown while service runs."
+            ActivationMode.AUTOMATIC -> "Dots appear when in a moving vehicle."
+        })
 
-        // --- Section: Appearance ---
-        GroupedSection(header = "Appearance") {
-            SettingsRow(
-                title = "Pattern",
-                trailing = {
-                    IosSegmentedControl(
-                        segments = listOf("Regular", "Dynamic"),
-                        selectedIndex = if (settings.pattern == DotPattern.REGULAR) 0 else 1,
-                        onSelected = { i ->
-                            scope.launch { repo.setPattern(if (i == 0) DotPattern.REGULAR else DotPattern.DYNAMIC) }
-                        },
-                    )
-                },
-                showSeparator = true,
-            )
-            SettingsRow(
-                title = "Color",
-                trailing = {
-                    ColorSwatch(color = settings.dotColor) { showColorPicker = true }
-                },
-                showSeparator = true,
-                onClick = { showColorPicker = true },
-            )
-            SettingsRow(
+        // Appearance section
+        SectionCard(header = "Appearance") {
+            // Pattern
+            RowSetting(title = "Pattern") {
+                SingleChoiceSegmentedButtonRow {
+                    SegmentedButton(
+                        selected = settings.pattern == DotPattern.REGULAR,
+                        onClick = { scope.launch { repo.setPattern(DotPattern.REGULAR) } },
+                        shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+                    ) { Text("Regular") }
+                    SegmentedButton(
+                        selected = settings.pattern == DotPattern.DYNAMIC,
+                        onClick = { scope.launch { repo.setPattern(DotPattern.DYNAMIC) } },
+                        shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+                    ) { Text("Dynamic") }
+                }
+            }
+            // Color
+            RowSetting(title = "Color", onClick = { showColorPicker = true }) {
+                Box(
+                    Modifier
+                        .size(28.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(Color(settings.dotColor))
+                )
+            }
+            // Adaptive Contrast
+            SwitchSetting(
                 title = "Adaptive Contrast",
-                trailing = { IosSwitch(checked = settings.adaptiveContrast, onCheckedChange = { v -> scope.launch { repo.setAdaptiveContrast(v) } }) },
-                showSeparator = true,
+                checked = settings.adaptiveContrast,
+                onCheckedChange = { v -> scope.launch { repo.setAdaptiveContrast(v) } },
             )
-            SettingsRow(
-                title = "Visibility",
-                trailing = {
-                    IosSegmentedControl(
-                        segments = listOf("Standard", "Larger", "More"),
-                        selectedIndex = settings.visibility.ordinal,
-                        onSelected = { i -> scope.launch { repo.setVisibility(DotVisibility.entries[i]) } },
-                    )
-                },
-                showSeparator = false,
-            )
+            // Visibility
+            RowSetting(title = "Visibility", showSeparator = false) {
+                SingleChoiceSegmentedButtonRow {
+                    val labels = listOf("Standard", "Larger", "More")
+                    DotVisibility.entries.forEachIndexed { i, vis ->
+                        SegmentedButton(
+                            selected = settings.visibility == vis,
+                            onClick = { scope.launch { repo.setVisibility(vis) } },
+                            shape = SegmentedButtonDefaults.itemShape(index = i, count = 3),
+                        ) { Text(labels[i]) }
+                    }
+                }
+            }
         }
 
-        // --- Section: Sensitivity ---
-        GroupedSection(header = "Response") {
-            SliderRow(
+        // Response section
+        SectionCard(header = "Response") {
+            SliderSetting(
                 title = "Sensitivity",
                 value = settings.sensitivity,
                 valueRange = 0.5f..2.0f,
                 format = { "${"%.1f".format(it)}\u00D7" },
-                onChange = { v -> scope.launch { repo.setSensitivity(v) } },
-                showSeparator = false,
+                onValueChange = { v -> scope.launch { repo.setSensitivity(v) } },
             )
         }
 
-        // --- Section: Permissions ---
+        // Permissions
         PermissionsSection()
 
-        // --- Advanced toggle ---
-        GroupedSection {
-            SettingsRow(
-                title = "Advanced Settings",
-                trailing = {
-                    Text(
-                        text = if (showAdvanced) "\u25B2" else "\u25BC",
-                        color = IosTheme.colors.secondaryLabel,
-                    )
-                },
-                showSeparator = false,
-                onClick = { showAdvanced = !showAdvanced },
-            )
-        }
-
-        // --- Advanced settings (collapsed) ---
-        AnimatedVisibility(visible = showAdvanced) {
-            GroupedSection(
-                footer = "Fine-tune the integrator, visual response, and gate timing.",
-            ) {
-                SettingsRow(
-                    title = "Auto-Contrast",
-                    subtitle = "Halo keeps dots visible on any background",
-                    trailing = { IosSwitch(checked = settings.autoContrast, onCheckedChange = { v -> scope.launch { repo.setAutoContrast(v) } }) },
-                    showSeparator = true,
-                )
-                SliderRow(
-                    title = "Filter Alpha",
-                    value = settings.filterAlpha,
-                    valueRange = 0.10f..0.30f,
-                    format = { "%.2f".format(it) },
-                    onChange = { v -> scope.launch { repo.setFilterAlpha(v) } },
-                )
-                SliderRow(
-                    title = "Damping",
-                    value = settings.dampingCoef,
-                    valueRange = 2.0f..10.0f,
-                    format = { "${"%.1f".format(it)} 1/s" },
-                    onChange = { v -> scope.launch { repo.setDampingCoef(v) } },
-                )
-                SliderRow(
-                    title = "Return to Center",
-                    value = settings.returnToCenterCoef,
-                    valueRange = 0.5f..5.0f,
-                    format = { "${"%.1f".format(it)} 1/s" },
-                    onChange = { v -> scope.launch { repo.setReturnToCenterCoef(v) } },
-                )
-                SliderRow(
-                    title = "Input Clamp",
-                    value = settings.inputClamp,
-                    valueRange = 3.0f..12.0f,
-                    format = { "${"%.1f".format(it)} m/s\u00B2" },
-                    onChange = { v -> scope.launch { repo.setInputClamp(v) } },
-                )
-                SliderRow(
-                    title = "Deadzone",
-                    value = settings.deadzone,
-                    valueRange = 0.05f..0.5f,
-                    format = { "${"%.2f".format(it)} m/s\u00B2" },
-                    onChange = { v -> scope.launch { repo.setDeadzone(v) } },
-                )
-                SliderRow(
-                    title = "Base Opacity",
-                    value = settings.dotOpacity,
-                    valueRange = 0.1f..1.0f,
-                    format = { "${(it * 100).toInt()}%" },
-                    onChange = { v -> scope.launch { repo.setDotOpacity(v) } },
-                )
-                SliderRow(
-                    title = "Edge Inset",
-                    value = settings.dotInsetDp,
-                    valueRange = 8f..40f,
-                    format = { "${it.toInt()} dp" },
-                    onChange = { v -> scope.launch { repo.setDotInsetDp(v) } },
-                )
-                SliderRow(
-                    title = "Intensity Response",
-                    value = settings.intensityResponse,
-                    valueRange = 0f..1f,
-                    format = { "${(it * 100).toInt()}%" },
-                    onChange = { v -> scope.launch { repo.setIntensityResponse(v) } },
-                )
-                SliderRow(
-                    title = "Entry Delay",
-                    value = settings.gateEntryDelayMs.toFloat(),
-                    valueRange = 1000f..10000f,
-                    format = { "${(it / 1000).toInt()}s" },
-                    onChange = { v -> scope.launch { repo.setGateEntryDelayMs(v.toLong()) } },
-                )
-                SliderRow(
-                    title = "Exit Grace",
-                    value = settings.gateExitGraceMs.toFloat(),
-                    valueRange = 3000f..15000f,
-                    format = { "${(it / 1000).toInt()}s" },
-                    onChange = { v -> scope.launch { repo.setGateExitGraceMs(v.toLong()) } },
-                    showSeparator = false,
-                )
+        // Advanced toggle
+        SectionCard {
+            RowSetting(title = "Advanced Settings", showSeparator = false, onClick = { showAdvanced = !showAdvanced }) {
+                Text(if (showAdvanced) "\u25B2" else "\u25BC", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
 
-        // --- Reset ---
-        GroupedSection {
-            SettingsRow(
-                title = "Reset to Defaults",
-                trailing = {},
-                showSeparator = false,
-                onClick = { showResetDialog = true },
-            )
+        // Advanced settings
+        AnimatedVisibility(visible = showAdvanced) {
+            SectionCard(header = "Advanced") {
+                SwitchSetting(
+                    title = "Auto-Contrast",
+                    subtitle = "Halo keeps dots visible on any background",
+                    checked = settings.autoContrast,
+                    onCheckedChange = { v -> scope.launch { repo.setAutoContrast(v) } },
+                )
+                SliderSetting("Filter Alpha", settings.filterAlpha, 0.10f..0.30f, { "%.2f".format(it) }) { v -> scope.launch { repo.setFilterAlpha(v) } }
+                SliderSetting("Damping", settings.dampingCoef, 2.0f..10.0f, { "${"%.1f".format(it)} 1/s" }) { v -> scope.launch { repo.setDampingCoef(v) } }
+                SliderSetting("Return to Center", settings.returnToCenterCoef, 0.5f..5.0f, { "${"%.1f".format(it)} 1/s" }) { v -> scope.launch { repo.setReturnToCenterCoef(v) } }
+                SliderSetting("Input Clamp", settings.inputClamp, 3.0f..12.0f, { "${"%.1f".format(it)} m/s\u00B2" }) { v -> scope.launch { repo.setInputClamp(v) } }
+                SliderSetting("Deadzone", settings.deadzone, 0.05f..0.5f, { "${"%.2f".format(it)} m/s\u00B2" }) { v -> scope.launch { repo.setDeadzone(v) } }
+                SliderSetting("Base Opacity", settings.dotOpacity, 0.1f..1.0f, { "${(it * 100).toInt()}%" }) { v -> scope.launch { repo.setDotOpacity(v) } }
+                SliderSetting("Edge Inset", settings.dotInsetDp, 8f..40f, { "${it.toInt()} dp" }) { v -> scope.launch { repo.setDotInsetDp(v) } }
+                SliderSetting("Intensity Response", settings.intensityResponse, 0f..1f, { "${(it * 100).toInt()}%" }) { v -> scope.launch { repo.setIntensityResponse(v) } }
+                SliderSetting("Entry Delay", settings.gateEntryDelayMs.toFloat(), 1000f..10000f, { "${(it / 1000).toInt()}s" }) { v -> scope.launch { repo.setGateEntryDelayMs(v.toLong()) } }
+                SliderSetting("Exit Grace", settings.gateExitGraceMs.toFloat(), 3000f..15000f, { "${(it / 1000).toInt()}s" }, showSeparator = false) { v -> scope.launch { repo.setGateExitGraceMs(v.toLong()) } }
+            }
         }
 
-        // --- Footer ---
+        // Reset
+        SectionCard {
+            RowSetting(title = "Reset to Defaults", showSeparator = false, onClick = { showResetDialog = true }) {}
+        }
+
+        // Footer
         Spacer(Modifier.height(32.dp))
         Text(
             text = "Vehicle Motion Cues v1.5.0",
@@ -329,7 +245,7 @@ fun SettingsScreen(onBack: () -> Unit = {}, modifier: Modifier = Modifier) {
         Spacer(Modifier.height(32.dp))
     }
 
-    // --- Dialogs ---
+    // Dialogs
     if (showDisclaimer) {
         SafetyDisclaimer(onAck = {
             scope.launch { repo.ackSafety() }
@@ -352,66 +268,157 @@ fun SettingsScreen(onBack: () -> Unit = {}, modifier: Modifier = Modifier) {
                 TextButton(onClick = {
                     scope.launch { repo.reset() }
                     showResetDialog = false
-                }) {
-                    Text("Reset", color = IosTheme.colors.red)
-                }
+                }) { Text("Reset") }
             },
             dismissButton = {
-                TextButton(onClick = { showResetDialog = false }) {
-                    Text("Cancel", color = IosTheme.colors.blue)
-                }
+                TextButton(onClick = { showResetDialog = false }) { Text("Cancel") }
             },
         )
     }
 }
 
-// --- Helper composables ---
+// --- Reusable Material components ---
 
 @Composable
-private fun CheckMark() {
-    Text("\u2713", color = IosTheme.colors.blue, fontWeight = FontWeight.Bold)
+private fun SectionCard(
+    header: String? = null,
+    content: @Composable () -> Unit,
+) {
+    Column(Modifier.fillMaxWidth()) {
+        if (header != null) {
+            Text(
+                text = header,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 32.dp, top = 24.dp, bottom = 8.dp),
+            )
+        }
+        Card(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        ) {
+            Column { content() }
+        }
+    }
 }
 
 @Composable
-private fun ColorSwatch(color: Int, onClick: () -> Unit) {
-    Box(
-        Modifier
-            .size(28.dp)
-            .clip(CircleShape)
-            .background(Color(color))
-            .border(0.5.dp, IosTheme.colors.separator, CircleShape)
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-            ) { onClick() },
+private fun SectionFooter(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(start = 32.dp, end = 16.dp, top = 6.dp, bottom = 8.dp),
     )
 }
 
 @Composable
-private fun SliderRow(
+private fun ModeOption(title: String, selected: Boolean, showSeparator: Boolean = true, onClick: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(title, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        if (selected) {
+            Icon(Icons.Outlined.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+        }
+    }
+    if (showSeparator) {
+        Box(Modifier.fillMaxWidth().padding(start = 16.dp).height(0.5.dp).background(MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)))
+    }
+}
+
+@Composable
+private fun RowSetting(
+    title: String,
+    showSeparator: Boolean = true,
+    onClick: (() -> Unit)? = null,
+    trailing: @Composable () -> Unit,
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(title, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        trailing()
+    }
+    if (showSeparator) {
+        Box(Modifier.fillMaxWidth().padding(start = 16.dp).height(0.5.dp).background(MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)))
+    }
+}
+
+@Composable
+private fun SwitchSetting(
+    title: String,
+    subtitle: String? = null,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyLarge)
+            if (subtitle != null) {
+                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = Color.White,
+                uncheckedThumbColor = Color.White,
+            ),
+        )
+    }
+}
+
+@Composable
+private fun SliderSetting(
     title: String,
     value: Float,
     valueRange: ClosedFloatingPointRange<Float>,
     format: (Float) -> String,
-    onChange: (Float) -> Unit,
     showSeparator: Boolean = true,
+    onValueChange: (Float) -> Unit,
 ) {
     Column {
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(title, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
+            Text(title, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
             Text(format(value), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
-            IosSlider(value = value, onValueChange = onChange, valueRange = valueRange)
+            Slider(
+                value = value,
+                onValueChange = onValueChange,
+                valueRange = valueRange,
+                colors = SliderDefaults.colors(
+                    thumbColor = MaterialTheme.colorScheme.primary,
+                    activeTrackColor = MaterialTheme.colorScheme.primary,
+                ),
+            )
         }
         if (showSeparator) {
-            Box(Modifier.fillMaxWidth().padding(start = 16.dp).height(0.5.dp).background(MaterialTheme.colorScheme.outlineVariant))
+            Box(Modifier.fillMaxWidth().padding(start = 16.dp).height(0.5.dp).background(MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)))
         }
     }
 }
+
+// --- Permissions ---
 
 @Composable
 private fun PermissionsSection() {
@@ -430,7 +437,7 @@ private fun PermissionsSection() {
     }
 
     key(refreshKey) {
-        GroupedSection(header = "Permissions") {
+        SectionCard(header = "Permissions") {
             PermissionRow("Overlay", PermissionsHelper.hasOverlayPermission(context), "Open",
                 Icons.Outlined.Warning, MaterialTheme.colorScheme.error,
             ) { runCatching { context.startActivity(PermissionsHelper.overlaySettingsIntent(context)) } }
@@ -457,30 +464,31 @@ private fun PermissionsSection() {
 @Composable
 private fun PermissionRow(
     title: String, granted: Boolean, actionLabel: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector, iconTint: Color,
+    icon: ImageVector, iconTint: Color,
     showSeparator: Boolean = true, onClick: () -> Unit,
 ) {
-    SettingsRow(
-        title = title,
-        icon = {
-            Icon(
-                if (granted) Icons.Outlined.CheckCircle else icon,
-                contentDescription = null,
-                tint = if (granted) IosTheme.colors.green else iconTint,
-                modifier = Modifier.size(20.dp),
-            )
-        },
-        trailing = {
-            if (!granted) {
-                Text(actionLabel, style = MaterialTheme.typography.bodyMedium, color = IosTheme.colors.blue,
-                    modifier = Modifier.clickable(
-                        interactionSource = remember { MutableInteractionSource() }, indication = null,
-                    ) { onClick() })
-            }
-        },
-        showSeparator = showSeparator,
-        onClick = if (!granted) onClick else null,
-    )
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickable(enabled = !granted, onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            if (granted) Icons.Outlined.CheckCircle else icon,
+            contentDescription = null,
+            tint = if (granted) MaterialTheme.colorScheme.primary else iconTint,
+            modifier = Modifier.size(20.dp),
+        )
+        Spacer(Modifier.width(12.dp))
+        Text(title, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        if (!granted) {
+            Text(actionLabel, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
+        }
+    }
+    if (showSeparator) {
+        Box(Modifier.fillMaxWidth().padding(start = 48.dp).height(0.5.dp).background(MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)))
+    }
 }
 
 @Composable
@@ -491,7 +499,7 @@ private fun SafetyDisclaimer(onAck: () -> Unit) {
         text = { Text(stringResource(R.string.safety_body)) },
         confirmButton = {
             TextButton(onClick = onAck) {
-                Text(stringResource(R.string.safety_ack), color = IosTheme.colors.blue)
+                Text(stringResource(R.string.safety_ack))
             }
         },
     )
