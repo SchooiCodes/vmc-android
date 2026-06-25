@@ -130,6 +130,43 @@ class MotionPipeline(context: Context) : SensorEventListener {
         Log.i(TAG, "pipeline stopped")
     }
 
+    /**
+     * Inject a simulated force (for the Force Test screen).
+     * Bypasses sensors and processes the force directly through the integrator.
+     */
+    @Synchronized
+    fun injectSimulatedForce(lateral: Float, longitudinal: Float) {
+        if (!running) return
+        val now = SystemClock.elapsedRealtime()
+        val dt = if (lastTickMs > 0) Math.min(0.1f, (now - lastTickMs) / 1000f) else 1f / 60f
+        lastTickMs = now
+
+        val vehicle = ForceVector(lateral, longitudinal)
+        val newRaw = vehicle
+        val rawEpsilon = 0.001f
+        if (kotlin.math.abs(newRaw.lateral - _rawForce.value.lateral) > rawEpsilon ||
+            kotlin.math.abs(newRaw.longitudinal - _rawForce.value.longitudinal) > rawEpsilon) {
+            _rawForce.value = newRaw
+        }
+
+        val dampedLat = VehicleFrame.smoothDeadzone(vehicle.lateral, deadzone)
+        val dampedLon = VehicleFrame.smoothDeadzone(vehicle.longitudinal, deadzone)
+        val damped = ForceVector(dampedLat, dampedLon)
+        _filteredForce.value = damped
+
+        val offset = integrator.update(damped, dt)
+        val newOffset = ForceVector(
+            lateral = offset.lateral * sensitivity,
+            longitudinal = offset.longitudinal * sensitivity,
+        )
+        val epsilon = 0.01f
+        if (kotlin.math.abs(newOffset.lateral - _dotOffset.value.lateral) > epsilon ||
+            kotlin.math.abs(newOffset.longitudinal - _dotOffset.value.longitudinal) > epsilon) {
+            _dotOffset.value = newOffset
+        }
+        lastSampleUptimeMs = now
+    }
+
     fun destroy() {
         sensorThread.quitSafely()
     }

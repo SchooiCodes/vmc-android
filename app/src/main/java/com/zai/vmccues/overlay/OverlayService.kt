@@ -60,6 +60,9 @@ class OverlayService : Service() {
     @Volatile private var overlayView: DotOverlayView? = null
     @Volatile private var overlayAttached = false
 
+    /** Expose pipeline for simulated force injection (Force Test screen). */
+    fun getPipeline(): MotionPipeline = pipeline
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var settingsJob: Job? = null
 
@@ -71,6 +74,7 @@ class OverlayService : Service() {
         pipeline = MotionPipeline(this)
         gate = ContextGate(pipeline, app.activityRecognition, scope)
         windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
+        instance = this
         Log.i(TAG, "OverlayService created")
     }
 
@@ -103,6 +107,7 @@ class OverlayService : Service() {
         pipeline.destroy()
         removeOverlay()
         scope.cancel()
+        instance = null
         Log.i(TAG, "OverlayService destroyed")
         super.onDestroy()
     }
@@ -320,6 +325,11 @@ class OverlayService : Service() {
         private const val CHANNEL_ID = "vmc_active"
         private const val NOTIF_ID = 1
         private const val ACTION_STOP = "com.zai.vmccues.action.STOP"
+
+        /** Static reference to the running service instance (for Force Test). */
+        @Volatile
+        var instance: OverlayService? = null
+            private set
 
         fun start(context: Context) {
             val intent = Intent(context, OverlayService::class.java)
