@@ -34,6 +34,8 @@ class MotionPipeline(context: Context) : SensorEventListener {
     companion object {
         private const val TAG = "MotionPipeline"
         private const val GRAVITY_ALPHA = 0.8f
+        /** In "On" mode, use a lower deadzone so dots respond to walking-level forces. */
+        const val ON_MODE_DEADZONE = 0.05f
     }
 
     private val sensorManager =

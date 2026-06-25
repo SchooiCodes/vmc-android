@@ -12,6 +12,7 @@ import android.view.Choreographer
 import android.view.View
 import com.zai.vmccues.data.CueSettings
 import com.zai.vmccues.data.DotPattern
+import com.zai.vmccues.data.DotVisibility
 import com.zai.vmccues.motion.ForceVector
 import com.zai.vmccues.motion.VehicleFrame
 import com.zai.vmccues.ui.components.PreviewUtilities
@@ -109,8 +110,14 @@ class DotOverlayView @JvmOverloads constructor(
         val density = resources.displayMetrics.density
         val sideMul = if (isLowEnd) 0.7f else 1f
         val endMul = if (isLowEnd) 0.6f else 1f
-        val rawSide = if (settings.moreDots) 10 else 6
-        val rawEnd = if (settings.moreDots) 4 else 2
+        val rawSide = when (settings.visibility) {
+            DotVisibility.MORE_DOTS -> 10
+            else -> 6
+        }
+        val rawEnd = when (settings.visibility) {
+            DotVisibility.MORE_DOTS -> 4
+            else -> 2
+        }
         val sideCount = (rawSide * sideMul).toInt().coerceAtLeast(4)
         val endCount = (rawEnd * endMul).toInt().coerceAtLeast(1)
         val newDots = PreviewUtilities.buildDotLayout(
@@ -144,7 +151,10 @@ class DotOverlayView @JvmOverloads constructor(
 
         val s = settings
         val density = resources.displayMetrics.density
-        val baseRadius = (if (s.largerDots) LARGER_RADIUS else BASE_RADIUS) * density / 2f
+        val baseRadius = when (settings.visibility) {
+            DotVisibility.LARGER_DOTS -> LARGER_RADIUS
+            else -> BASE_RADIUS
+        } * density / 2f
         val ringWidth = 1f * density
         val scrW = widthPx
         val scrH = heightPx
@@ -178,13 +188,11 @@ class DotOverlayView @JvmOverloads constructor(
         val ringColor: Int
         val fillColor: Int
         if (useAdaptive) {
-            if (bgLight) {
-                fillColor = COLOR_DARK
-                ringColor = if (s.autoContrast) COLOR_LIGHT else COLOR_DARK
-            } else {
-                fillColor = COLOR_LIGHT
-                ringColor = if (s.autoContrast) COLOR_DARK else COLOR_LIGHT
-            }
+            // Apple behavior: adjust saturation of user's color to maintain contrast.
+            fillColor = PreviewUtilities.adjustSaturationForContrast(dotColor, bgLight)
+            ringColor = if (s.autoContrast) {
+                if (PreviewUtilities.isLightColor(fillColor)) COLOR_DARK else COLOR_LIGHT
+            } else 0
         } else if (s.autoContrast) {
             ringColor = if (PreviewUtilities.isLightColor(dotColor)) COLOR_DARK else COLOR_LIGHT
             fillColor = dotColor

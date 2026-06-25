@@ -195,15 +195,15 @@ fun LivePreview(settings: CueSettings, modifier: Modifier = Modifier) {
     // remember it across frames to avoid per-frame allocation + flicker.
     val dotLayout = remember(
         previewWidthPx, previewHeightPx,
-        settings.moreDots, settings.pattern,
+        settings.visibility, settings.pattern,
         settings.dotInsetDp,
         density.density,
     ) {
         PreviewUtilities.buildDotLayout(
             width = previewWidthPx,
             height = previewHeightPx,
-            sideCount = if (settings.moreDots) SIDE_COUNT_MORE else SIDE_COUNT_BASE,
-            endCount = if (settings.moreDots) END_COUNT_MORE else END_COUNT_BASE,
+            sideCount = if (settings.visibility == com.zai.vmccues.data.DotVisibility.MORE_DOTS) SIDE_COUNT_MORE else SIDE_COUNT_BASE,
+            endCount = if (settings.visibility == com.zai.vmccues.data.DotVisibility.MORE_DOTS) END_COUNT_MORE else END_COUNT_BASE,
             insetPx = settings.dotInsetDp * PREVIEW_INSET_SCALE * density.density,
             centerExclusion = CENTER_EXCLUSION,
             dynamic = settings.pattern == DotPattern.DYNAMIC,
@@ -310,7 +310,7 @@ fun LivePreview(settings: CueSettings, modifier: Modifier = Modifier) {
             // ---- 5. Peripheral dots around the phone edges ----
             // iOS-faithful rendering: solid circles + thin contrast ring,
             // exactly matching DotOverlayView (no radial gradients, no halos).
-            val baseRadiusPx = (if (settings.largerDots) LARGER_RADIUS_DP else BASE_RADIUS_DP) *
+            val baseRadiusPx = (if (settings.visibility == com.zai.vmccues.data.DotVisibility.LARGER_DOTS) LARGER_RADIUS_DP else BASE_RADIUS_DP) *
                 PREVIEW_RADIUS_SCALE * density.density
             val dotColor = Color(settings.dotColor)
             // Contrast ring color: inverse luminance of the dot color.

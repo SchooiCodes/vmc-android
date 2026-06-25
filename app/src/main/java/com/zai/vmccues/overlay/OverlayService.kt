@@ -184,11 +184,15 @@ class OverlayService : Service() {
                     // Push configurable gate delays.
                     gate.entryConfirmMs = s.gateEntryDelayMs
                     gate.exitGraceMs = s.gateExitGraceMs
+                    // In "On" mode, use a lower deadzone so dots respond to walking.
+                    // In "Automatic" mode, use the user-configured deadzone.
+                    val effectiveDeadzone = if (s.mode == ActivationMode.ON)
+                        MotionPipeline.ON_MODE_DEADZONE else s.deadzone
                     // Restart pipeline with new integrator params if running.
                     if (pipeline.available) {
                         pipeline.start(
                             s.filterAlpha, s.dampingCoef, s.returnToCenterCoef,
-                            s.inputClamp, s.deadzone, s.sensitivity,
+                            s.inputClamp, effectiveDeadzone, s.sensitivity,
                         )
                     }
                     // In ON mode, force the gate to "in vehicle"; in AUTOMATIC,
@@ -208,9 +212,11 @@ class OverlayService : Service() {
                     .collectLatest { inVehicle ->
                         if (inVehicle) {
                             val s = app.settings.settings.value
+                            val effectiveDeadzone = if (s.mode == ActivationMode.ON)
+                                MotionPipeline.ON_MODE_DEADZONE else s.deadzone
                             pipeline.start(
                                 s.filterAlpha, s.dampingCoef, s.returnToCenterCoef,
-                                s.inputClamp, s.deadzone, s.sensitivity,
+                                s.inputClamp, effectiveDeadzone, s.sensitivity,
                             )
                             Log.i(TAG, "pipeline started (in-vehicle=true)")
                         } else {

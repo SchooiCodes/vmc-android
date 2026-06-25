@@ -1,11 +1,12 @@
 package com.zai.vmccues.data
 
 /**
- * The 3-way activation mode mirrors Apple's setting (brief Section 3.4).
+ * The 3-way activation mode mirrors Apple's setting.
  *  - OFF:        feature disabled entirely
- *  - ON:         dots always shown (manual)
+ *  - ON:         dots always shown (manual), with a lower deadzone so dots
+ *                respond to walking-level forces
  *  - AUTOMATIC:  only shown when the context gate infers "passenger in moving
- *                vehicle"
+ *                vehicle" (requires actual vehicle motion)
  */
 enum class ActivationMode {
     OFF,
@@ -19,7 +20,7 @@ enum class ActivationMode {
     }
 }
 
-/** Pattern preset (brief Section 3.3). */
+/** Pattern preset. */
 enum class DotPattern {
     REGULAR,
     DYNAMIC;
@@ -28,5 +29,21 @@ enum class DotPattern {
         fun fromName(name: String?): DotPattern =
             entries.firstOrNull { it.name == name } ?: DEFAULT
         val DEFAULT = REGULAR
+    }
+}
+
+/**
+ * Visibility option (Apple: "Visibility: Larger Dots or More Dots").
+ * Mutually exclusive — only one can be active at a time.
+ */
+enum class DotVisibility {
+    STANDARD,
+    LARGER_DOTS,
+    MORE_DOTS;
+
+    companion object {
+        fun fromName(name: String?): DotVisibility =
+            entries.firstOrNull { it.name == name } ?: DEFAULT
+        val DEFAULT = STANDARD
     }
 }

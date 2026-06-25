@@ -4,6 +4,7 @@ import android.app.ActivityManager
 import android.content.Context
 import android.graphics.Color
 import com.zai.vmccues.data.DotPattern
+import com.zai.vmccues.data.DotVisibility
 import com.zai.vmccues.motion.ForceVector
 
 /**
@@ -21,6 +22,39 @@ object PreviewUtilities {
         val g = (color shr 8) and 0xFF
         val b = color and 0xFF
         return (0.299 * r + 0.587 * g + 0.114 * b) / 255.0 > 0.5
+    }
+
+    /**
+     * Adjust the user-chosen dot color's saturation and brightness to maintain
+     * contrast against the current background, without replacing the hue.
+     * Mirrors Apple's "saturation auto-adjusts to maintain contrast" behavior.
+     *
+     * - Light background: desaturate by ~30%, boost brightness so the dot is visible
+     * - Dark background: keep saturation, ensure brightness is sufficient
+     */
+    fun adjustSaturationForContrast(color: Int, bgLight: Boolean): Int {
+        val hsv = FloatArray(3)
+        Color.colorToHSV(color, hsv)
+        val hue = hsv[0]
+        var sat = hsv[1]
+        var value = hsv[2]
+        val alpha = Color.alpha(color)
+
+        if (bgLight) {
+            // Background is light — desaturate and darken the dot so it stands out.
+            sat = (sat * 0.7f).coerceIn(0f, 1f)
+            value = (value * 0.75f).coerceIn(0f, 1f)
+        } else {
+            // Background is dark — boost brightness slightly, keep saturation.
+            value = (value * 1.1f).coerceIn(0f, 1f)
+            sat = (sat * 1.05f).coerceIn(0f, 1f)
+        }
+
+        hsv[1] = sat
+        hsv[2] = value
+        val adjusted = Color.HSVToColor(hsv)
+        // Preserve original alpha
+        return (adjusted and 0x00FFFFFF) or (alpha shl 24)
     }
 
     /**

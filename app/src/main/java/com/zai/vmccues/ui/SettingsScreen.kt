@@ -56,6 +56,7 @@ import com.zai.vmccues.VmcApplication
 import com.zai.vmccues.data.ActivationMode
 import com.zai.vmccues.data.CueSettings
 import com.zai.vmccues.data.DotPattern
+import com.zai.vmccues.data.DotVisibility
 import com.zai.vmccues.overlay.OverlayService
 import com.zai.vmccues.ui.components.ColorPickerDialog
 import com.zai.vmccues.ui.components.GroupedSection
@@ -180,13 +181,14 @@ fun SettingsScreen(onBack: () -> Unit = {}, modifier: Modifier = Modifier) {
                 showSeparator = true,
             )
             SettingsRow(
-                title = "Larger Dots",
-                trailing = { IosSwitch(checked = settings.largerDots, onCheckedChange = { v -> scope.launch { repo.setLargerDots(v) } }) },
-                showSeparator = true,
-            )
-            SettingsRow(
-                title = "More Dots",
-                trailing = { IosSwitch(checked = settings.moreDots, onCheckedChange = { v -> scope.launch { repo.setMoreDots(v) } }) },
+                title = "Visibility",
+                trailing = {
+                    IosSegmentedControl(
+                        segments = listOf("Standard", "Larger", "More"),
+                        selectedIndex = settings.visibility.ordinal,
+                        onSelected = { i -> scope.launch { repo.setVisibility(DotVisibility.entries[i]) } },
+                    )
+                },
                 showSeparator = false,
             )
         }

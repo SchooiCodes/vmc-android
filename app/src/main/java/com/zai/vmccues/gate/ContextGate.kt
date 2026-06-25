@@ -189,7 +189,7 @@ class ContextGate(
     companion object {
         private const val GATE_TICK_MS = 500L
         private const val WINDOW_SAMPLES = 12            // ~3s at 250ms cadence
-        private const val WALKING_THRESHOLD = 0.6f       // m/s^2
+        private const val WALKING_THRESHOLD = 1.2f       // m/s^2 — requires actual vehicle motion
         private const val AR_FRESH_MS = 60_000L          // AR result usable for 60s
     }
 }

@@ -29,11 +29,10 @@ class SettingsRepository(private val appContext: Context) {
     private object Keys {
         val MODE = stringPreferencesKey("mode")
         val PATTERN = stringPreferencesKey("pattern")
+        val VISIBILITY = stringPreferencesKey("visibility")
         val DOT_COLOR = intPreferencesKey("dot_color")
         val AUTO_CONTRAST = booleanPreferencesKey("auto_contrast")
         val ADAPTIVE_CONTRAST = booleanPreferencesKey("adaptive_contrast")
-        val LARGER_DOTS = booleanPreferencesKey("larger_dots")
-        val MORE_DOTS = booleanPreferencesKey("more_dots")
         val SENSITIVITY = floatPreferencesKey("sensitivity")
         val FILTER_ALPHA = floatPreferencesKey("filter_alpha")
         val DAMPING_COEF = floatPreferencesKey("damping_coef")
@@ -48,27 +47,37 @@ class SettingsRepository(private val appContext: Context) {
         val SAFETY_ACK = booleanPreferencesKey("safety_ack")
     }
 
-    private fun Preferences.toSettings(): CueSettings = CueSettings(
-        mode = ActivationMode.fromName(this[Keys.MODE]),
-        pattern = DotPattern.fromName(this[Keys.PATTERN]),
-        dotColor = this[Keys.DOT_COLOR] ?: 0xFFF5F5F5.toInt(),
-        autoContrast = this[Keys.AUTO_CONTRAST] ?: true,
-        adaptiveContrast = this[Keys.ADAPTIVE_CONTRAST] ?: true,
-        largerDots = this[Keys.LARGER_DOTS] ?: false,
-        moreDots = this[Keys.MORE_DOTS] ?: false,
-        sensitivity = this[Keys.SENSITIVITY] ?: 1.2f,
-        filterAlpha = this[Keys.FILTER_ALPHA] ?: 0.18f,
-        dampingCoef = this[Keys.DAMPING_COEF] ?: 5.5f,
-        returnToCenterCoef = this[Keys.RETURN_TO_CENTER] ?: 2.5f,
-        inputClamp = this[Keys.INPUT_CLAMP] ?: 8.0f,
-        deadzone = this[Keys.DEADZONE] ?: 0.25f,
-        dotOpacity = this[Keys.DOT_OPACITY] ?: 0.45f,
-        dotInsetDp = this[Keys.DOT_INSET] ?: 16f,
-        intensityResponse = this[Keys.INTENSITY_RESPONSE] ?: 0.6f,
-        gateEntryDelayMs = this[Keys.GATE_ENTRY_MS] ?: 5_000L,
-        gateExitGraceMs = this[Keys.GATE_EXIT_MS] ?: 4_000L,
-        safetyAcknowledged = this[Keys.SAFETY_ACK] ?: false,
-    )
+    private fun Preferences.toSettings(): CueSettings {
+        // Migration: old boolean keys → new visibility enum
+        val visFromNew = this[Keys.VISIBILITY]?.let { DotVisibility.fromName(it) }
+        val visFromOld = when {
+            (this[booleanPreferencesKey("larger_dots")] ?: false) -> DotVisibility.LARGER_DOTS
+            (this[booleanPreferencesKey("more_dots")] ?: false) -> DotVisibility.MORE_DOTS
+            else -> null
+        }
+        val visibility = visFromNew ?: visFromOld ?: DotVisibility.DEFAULT
+
+        return CueSettings(
+            mode = ActivationMode.fromName(this[Keys.MODE]),
+            pattern = DotPattern.fromName(this[Keys.PATTERN]),
+            visibility = visibility,
+            dotColor = this[Keys.DOT_COLOR] ?: 0xFFF5F5F5.toInt(),
+            autoContrast = this[Keys.AUTO_CONTRAST] ?: true,
+            adaptiveContrast = this[Keys.ADAPTIVE_CONTRAST] ?: true,
+            sensitivity = this[Keys.SENSITIVITY] ?: 1.2f,
+            filterAlpha = this[Keys.FILTER_ALPHA] ?: 0.18f,
+            dampingCoef = this[Keys.DAMPING_COEF] ?: 5.5f,
+            returnToCenterCoef = this[Keys.RETURN_TO_CENTER] ?: 2.5f,
+            inputClamp = this[Keys.INPUT_CLAMP] ?: 8.0f,
+            deadzone = this[Keys.DEADZONE] ?: 0.25f,
+            dotOpacity = this[Keys.DOT_OPACITY] ?: 0.45f,
+            dotInsetDp = this[Keys.DOT_INSET] ?: 16f,
+            intensityResponse = this[Keys.INTENSITY_RESPONSE] ?: 0.6f,
+            gateEntryDelayMs = this[Keys.GATE_ENTRY_MS] ?: 5_000L,
+            gateExitGraceMs = this[Keys.GATE_EXIT_MS] ?: 4_000L,
+            safetyAcknowledged = this[Keys.SAFETY_ACK] ?: false,
+        )
+    }
 
     val settings: StateFlow<CueSettings> = appContext.settingsDataStore.data
         .map { it.toSettings() }
@@ -79,11 +88,10 @@ class SettingsRepository(private val appContext: Context) {
             val next = transform(p.toSettings())
             p[Keys.MODE] = next.mode.name
             p[Keys.PATTERN] = next.pattern.name
+            p[Keys.VISIBILITY] = next.visibility.name
             p[Keys.DOT_COLOR] = next.dotColor
             p[Keys.AUTO_CONTRAST] = next.autoContrast
             p[Keys.ADAPTIVE_CONTRAST] = next.adaptiveContrast
-            p[Keys.LARGER_DOTS] = next.largerDots
-            p[Keys.MORE_DOTS] = next.moreDots
             p[Keys.SENSITIVITY] = next.sensitivity
             p[Keys.FILTER_ALPHA] = next.filterAlpha
             p[Keys.DAMPING_COEF] = next.dampingCoef
@@ -101,11 +109,10 @@ class SettingsRepository(private val appContext: Context) {
 
     suspend fun setMode(mode: ActivationMode) = update { it.copy(mode = mode) }
     suspend fun setPattern(pattern: DotPattern) = update { it.copy(pattern = pattern) }
+    suspend fun setVisibility(visibility: DotVisibility) = update { it.copy(visibility = visibility) }
     suspend fun setDotColor(color: Int) = update { it.copy(dotColor = color) }
     suspend fun setAutoContrast(v: Boolean) = update { it.copy(autoContrast = v) }
     suspend fun setAdaptiveContrast(v: Boolean) = update { it.copy(adaptiveContrast = v) }
-    suspend fun setLargerDots(v: Boolean) = update { it.copy(largerDots = v) }
-    suspend fun setMoreDots(v: Boolean) = update { it.copy(moreDots = v) }
     suspend fun setSensitivity(v: Float) = update { it.copy(sensitivity = v) }
     suspend fun setFilterAlpha(v: Float) = update { it.copy(filterAlpha = v) }
     suspend fun setDampingCoef(v: Float) = update { it.copy(dampingCoef = v) }

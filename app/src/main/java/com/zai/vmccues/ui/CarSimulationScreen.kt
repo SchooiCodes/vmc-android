@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zai.vmccues.data.CueSettings
 import com.zai.vmccues.data.DotPattern
+import com.zai.vmccues.data.DotVisibility
 import com.zai.vmccues.motion.VehicleFrame
 import com.zai.vmccues.ui.components.PreviewUtilities
 import com.zai.vmccues.ui.theme.IosTheme
@@ -424,10 +425,10 @@ private fun DrawScope.drawMotionDots(
     val inset = 24f * density
     val dotColor = Color(settings.dotColor)
 
-    val sideCount = if (settings.moreDots) 10 else 6
-    val endCount = if (settings.moreDots) 4 else 2
+    val sideCount = if (settings.visibility == DotVisibility.MORE_DOTS) 10 else 6
+    val endCount = if (settings.visibility == DotVisibility.MORE_DOTS) 4 else 2
     val exclusion = 0.35f
-    val baseRadius = (if (settings.largerDots) 11f else 6.5f) * density * 0.8f
+    val baseRadius = (if (settings.visibility == DotVisibility.LARGER_DOTS) 11f else 6.5f) * density * 0.8f
     val ringWidth = 0.5f * density
 
     // Intensity for opacity

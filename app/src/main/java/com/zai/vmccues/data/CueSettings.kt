@@ -8,12 +8,11 @@ package com.zai.vmccues.data
 data class CueSettings(
     val mode: ActivationMode = ActivationMode.DEFAULT,
     val pattern: DotPattern = DotPattern.DEFAULT,
+    val visibility: DotVisibility = DotVisibility.DEFAULT,
     val dotColor: Int = 0xFFF5F5F5.toInt(), // ARGB
     val autoContrast: Boolean = true,
     /** When true, dots adapt their color/contrast to the wallpaper behind them. */
     val adaptiveContrast: Boolean = true,
-    val largerDots: Boolean = false,
-    val moreDots: Boolean = false,
 
     /** 0.5f..2.0f — overall sensitivity multiplier on dot displacement. */
     val sensitivity: Float = 1.2f,

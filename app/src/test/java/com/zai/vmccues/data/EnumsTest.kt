@@ -87,4 +87,40 @@ class EnumsTest {
         val names = DotPattern.entries.map { it.name }.toSet()
         assertEquals(2, names.size)
     }
+
+    // --- DotVisibility ---
+
+    @Test
+    fun `DotVisibility has three values`() {
+        assertEquals(3, DotVisibility.entries.size)
+    }
+
+    @Test
+    fun `DotVisibility DEFAULT is STANDARD`() {
+        assertEquals(DotVisibility.STANDARD, DotVisibility.DEFAULT)
+    }
+
+    @Test
+    fun `DotVisibility fromName with valid names`() {
+        assertEquals(DotVisibility.STANDARD, DotVisibility.fromName("STANDARD"))
+        assertEquals(DotVisibility.LARGER_DOTS, DotVisibility.fromName("LARGER_DOTS"))
+        assertEquals(DotVisibility.MORE_DOTS, DotVisibility.fromName("MORE_DOTS"))
+    }
+
+    @Test
+    fun `DotVisibility fromName with null returns default`() {
+        assertEquals(DotVisibility.DEFAULT, DotVisibility.fromName(null))
+    }
+
+    @Test
+    fun `DotVisibility fromName with invalid name returns default`() {
+        assertEquals(DotVisibility.DEFAULT, DotVisibility.fromName("INVALID"))
+        assertEquals(DotVisibility.DEFAULT, DotVisibility.fromName(""))
+    }
+
+    @Test
+    fun `DotVisibility entries are distinct`() {
+        val names = DotVisibility.entries.map { it.name }.toSet()
+        assertEquals(3, names.size)
+    }
 }
