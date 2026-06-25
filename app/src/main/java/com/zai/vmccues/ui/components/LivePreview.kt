@@ -180,7 +180,7 @@ fun LivePreview(settings: CueSettings, modifier: Modifier = Modifier) {
                 // ---- Negate position so dots appear anchored to earth ----
                 // (spec B.3: "Negating the calculated position vector
                 // achieves this effect"). Scale to preview pixels:
-                //   - PX_PER_MS2 = 18 (same as the real overlay)
+                //   - PX_PER_MS2 = 30 (same as the real overlay)
                 //   - PREVIEW_DISPLACEMENT_SCALE = 0.30 (smaller preview)
                 //   - user sensitivity (applied last, like MotionPipeline)
                 val scaleX = PX_PER_MS2 * PREVIEW_DISPLACEMENT_SCALE * s.sensitivity
@@ -382,9 +382,9 @@ private const val PREVIEW_RADIUS_SCALE = 0.45f
 private const val PREVIEW_DISPLACEMENT_SCALE = 0.30f
 
 // Dead-reckoning scale: m/s² integrated → px (matches the real overlay's
-// pxPerMs2 = 18). Multiplied by PREVIEW_DISPLACEMENT_SCALE + sensitivity in
+// pxPerMs2 = 30). Multiplied by PREVIEW_DISPLACEMENT_SCALE + sensitivity in
 // the LaunchedEffect above.
-private const val PX_PER_MS2 = 18f
+private const val PX_PER_MS2 = 30f
 
 // Frame-time clamps so the integrator can't blow up on a stalled frame.
 private const val MIN_DT_SEC = 1e-5f

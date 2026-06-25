@@ -1,0 +1,433 @@
+================================================================================
+                    VEHICLE MOTION CUES (VMC) — ANDROID
+                         Complete Project Documentation
+================================================================================
+
+PROJECT GOAL
+============
+Recreate Apple's Vehicle Motion Cues accessibility feature (iOS 18) for Android.
+Animated peripheral dots overlay the screen and shift with vehicle forces to
+reduce motion sickness for passengers.
+
+Apple's spec: dots appear on the periphery of the screen and move in response
+to vehicle motion, providing visual cues that help the brain reconcile what
+the eyes see with what the inner ear feels — reducing motion sickness.
+
+The app must follow the Apple iOS spec where possible, run fast, look clean,
+and be clearly visible on any background.
+
+
+================================================================================
+USER PREFERENCES (Every instruction given)
+================================================================================
+
+1. UI STYLE
+   - Basic Material UI (not iOS-themed components)
+   - Simple and uncluttered
+   - Bottom navigation with 2 tabs: Drive / Settings
+
+2. VISIBILITY
+   - Dots must be clearly visible on any background
+   - Auto-contrast adjusts dot color brightness based on background
+   - Dots must move enough to be obviously responsive to forces
+   - Larger Dots and More Dots are INDEPENDENT booleans (can combine both)
+
+3. APPLE SPEC ALIGNMENT
+   - On mode uses lower deadzone (0.05 m/s²) so dots respond to walking-level forces
+   - Automatic mode threshold 1.2 m/s² — only actual vehicle motion triggers it
+   - Dot movement should be dramatic and clearly visible
+
+4. FORCE TEST SCREEN
+   - Should NOT render its own separate set of dots
+   - Must drive the REAL overlay dots the app is rendering
+   - Sliders feed forces into the actual MotionPipeline
+   - Shows live sensor diagnostics with REAL phone sensor data
+
+5. DIAGNOSTICS
+   - Must show actual sensor data from the phone (accelerometer, forces)
+   - Real-time updating values
+   - Not fake/static data
+
+6. APK METADATA
+   - Keep versionName and versionCode in sync with releases
+   - Always update before creating a release
+
+7. RELEASE PROCESS
+   - Commit, push, re-tag, create GitHub release with APKs
+
+
+================================================================================
+HOW THE APP WORKS — Architecture
+================================================================================
+
+Five layers mirroring the Apple iOS specification:
+
+┌─────────────────────────────────────────────────────────────────────┐
+│  Layer 1: Context Gate                                              │
+│  Detects if user is in a moving vehicle                             │
+│  Files: ContextGate.kt, ActivityRecognitionProvider.kt              │
+├─────────────────────────────────────────────────────────────────────┤
+│  Layer 2: Motion Pipeline                                           │
+│  Converts raw sensor data into vehicle-frame forces                 │
+│  Files: MotionPipeline.kt, VehicleFrame.kt,                        │
+│         DeadReckoningIntegrator.kt, ForceVector.kt                  │
+├─────────────────────────────────────────────────────────────────────┤
+│  Layer 3: Overlay Renderer                                          │
+│  Draws animated dots on screen over other apps                      │
+│  Files: OverlayService.kt, DotOverlayView.kt, ScreenColorSampler.kt│
+├─────────────────────────────────────────────────────────────────────┤
+│  Layer 4: Settings UI                                               │
+│  User configuration and diagnostics                                 │
+│  Files: MainActivity.kt, SettingsScreen.kt, CarSimulationScreen.kt │
+├─────────────────────────────────────────────────────────────────────┤
+│  Layer 5: Safety Guardrails                                         │
+│  Passenger-only warnings, safety disclaimers                        │
+│  Built into SettingsScreen                                          │
+└─────────────────────────────────────────────────────────────────────┘
+
+
+================================================================================
+DATA FLOW: Sensors → Dots
+================================================================================
+
+[Hardware Sensors]
+  ├─ TYPE_LINEAR_ACCELERATION (or TYPE_ACCELEROMETER as fallback)
+  └─ TYPE_GAME_ROTATION_VECTOR (or TYPE_ROTATION_VECTOR)
+          │
+          ▼
+[MotionPipeline.onSensorChanged]
+  ├─ For TYPE_ACCELEROMETER: subtract gravity (GRAVITY_ALPHA=0.8 low-pass)
+  └─ Calls processAcceleration(ax, ay, az)
+          │
+          ▼
+[VehicleFrame.transform]
+  ├─ Build device→world rotation matrix
+  ├─ Rotate accel to world frame
+  ├─ Drop vertical (Z) component
+  ├─ Project phone forward/right onto horizontal plane
+  └─ Dot product → ForceVector(lateral, longitudinal)
+          │
+          ▼
+[VehicleFrame.smoothDeadzone]
+  └─ Cubic smoothstep ramp below deadzone threshold
+          │
+          ▼
+[DeadReckoningIntegrator.update]
+  ├─ 1. Clamp input to ±inputClamp
+  ├─ 2. Low-pass filter
+  ├─ 3. Integrate accel→velocity with spring-damper
+  ├─ 4. Integrate velocity→position
+  ├─ 5. Return-to-center pull
+  └─ 6. Negate + scale by pxPerMs2
+          │
+          ▼
+[MotionPipeline] — scale by sensitivity
+          │
+          ▼
+[dotOffset StateFlow] → ForceVector (pixels)
+          │
+          ▼
+[OverlayService] — combine(dotOffset, rawForce, gate.status)
+          │
+          ▼
+[DotOverlayView.onDraw] (Choreographer-driven, 60fps)
+  ├─ Compute target displacement (lateral→horizontal, longitudinal→vertical)
+  ├─ Add dynamic wobble if DYNAMIC pattern
+  ├─ Lerp position (VISUAL_LERP=0.55) and opacity (OPACITY_LERP=0.40)
+  ├─ Compute opacity from base + intensity
+  ├─ Sample background brightness (cached 200ms)
+  ├─ Determine fill + ring colors (adaptive/auto contrast)
+  ├─ Clamp to screen bounds
+  └─ Draw contrast ring + solid circle per dot
+
+
+================================================================================
+KEY CONSTANTS & VALUES
+================================================================================
+
+VEHICLE FRAME (VehicleFrame.kt)
+  SCALE_PX_PER_G        = 80f      (px per m/s²)
+  DEFAULT_MAX_PX        = 300f     (max displacement clamp)
+  DEFAULT_DEADZONE      = 0.15f    (m/s²)
+
+MOTION PIPELINE (MotionPipeline.kt)
+  GRAVITY_ALPHA         = 0.8      (low-pass for gravity estimation)
+  ON_MODE_DEADZONE      = 0.05f    (lower deadzone for ON mode)
+
+DEAD RECKONING INTEGRATOR (DeadReckoningIntegrator.kt)
+  filterAlpha           = 0.18     (low-pass coefficient)
+  dampingCoef           = 5.5      (spring-damper, 1/s)
+  returnToCenterCoef    = 2.5      (return-to-center, 1/s)
+  inputClamp            = 8.0      (m/s²)
+  pxPerMs2              = 18       (scale factor)
+
+DOT OVERLAY (DotOverlayView.kt)
+  VISUAL_LERP           = 0.55     (position interpolation)
+  OPACITY_LERP          = 0.40     (opacity interpolation)
+  BASE_RADIUS           = 6.5f     (dp, normal dots)
+  LARGER_RADIUS         = 11f      (dp, larger dots)
+  CENTER_EXCLUSION      = 0.35     (center gap fraction)
+
+CONTEXT GATE (ContextGate.kt)
+  WALKING_THRESHOLD     = 1.2      (m/s², automatic mode trigger)
+  GATE_TICK_MS          = 500      (ms, state machine tick)
+  WINDOW_SAMPLES        = 12       (~3s sliding window)
+  AR_FRESH_MS           = 60000    (ms, AR result freshness)
+
+ACTIVITY RECOGNITION (ActivityRecognitionProvider.kt)
+  CONFIDENCE_THRESHOLD  = 60       (IN_VEHICLE confidence)
+  DETECTION_INTERVAL_MS = 20000    (20s)
+
+DEFAULT SETTINGS (CueSettings.kt)
+  mode                  = ON
+  pattern               = REGULAR
+  dotColor              = 0xFFF5F5F5 (light gray)
+  autoContrast          = true
+  adaptiveContrast      = true
+  largerDots            = false
+  moreDots              = false
+  sensitivity           = 2.0
+  filterAlpha           = 0.18
+  dampingCoef           = 5.5
+  returnToCenterCoef    = 2.5
+  inputClamp            = 8.0
+  deadzone              = 0.25
+  dotOpacity            = 0.45
+  dotInsetDp            = 16
+  intensityResponse     = 0.6
+  gateEntryDelayMs      = 5000
+  gateExitGraceMs       = 4000
+  safetyAcknowledged    = false
+
+BUILD (build.gradle.kts)
+  namespace             = com.zai.vmccues
+  compileSdk            = 34
+  minSdk                = 26
+  targetSdk             = 34
+  versionCode           = 9
+  versionName           = "1.5.0"
+  jvmTarget             = "17"
+
+
+================================================================================
+SETTINGS SCREEN STRUCTURE
+================================================================================
+
+Bottom Navigation:
+  [Drive] — Force Test dev tool (CarSimulationScreen)
+  [Settings] — Full settings UI (SettingsScreen)
+
+Settings Sections:
+  1. Header — "Done" button + title
+  2. Mode — Off / On / Automatic (check-circle for selected)
+  3. Appearance — Pattern, Color, Adaptive Contrast, Larger Dots, More Dots
+  4. Response — Sensitivity slider (0.5x–2.0x)
+  5. Permissions — Overlay, Activity Recognition, Notifications, Battery
+  6. Advanced (expandable) — All integrator/overlay tuning parameters
+  7. Reset to Defaults — with confirmation dialog
+  8. Footer — Version string
+
+
+================================================================================
+FORCE TEST SCREEN (CarSimulationScreen)
+================================================================================
+
+Purpose: Dev tool to test dot movement with simulated forces.
+
+Features:
+  - Lateral slider (-1..1) → force in m/s² (×6)
+  - Longitudinal slider (-1..1) → force in m/s² (×5)
+  - Auto Test button — smooth sine wave oscillation
+  - Reset button — returns sliders to center
+  - Settings button — switches to Settings tab
+
+Key behavior:
+  - Starts OverlayService on composition
+  - Feeds forces into real MotionPipeline via injectSimulatedForce()
+  - NO separate canvas — drives the actual overlay dots
+  - Frame-by-frame loop using withFrameNanos
+
+Diagnostics Panel (REAL sensor data):
+  - Raw accelerometer (device frame X/Y/Z in m/s²)
+  - Raw vehicle-frame force (lateral/longitudinal)
+  - Filtered force (post-deadzone)
+  - Dot offset in pixels
+  - Current settings summary (mode, sensitivity, deadzone, dots, opacity)
+
+
+================================================================================
+OVERLAY SERVICE
+================================================================================
+
+Foreground Service — the central orchestrator.
+
+Responsibilities:
+  1. Creates MotionPipeline and ContextGate
+  2. Adds DotOverlayView to WindowManager (TYPE_APPLICATION_OVERLAY)
+  3. Observes settings changes → pushes to pipeline + overlay
+  4. Pipes pipeline.dotOffset → overlay view
+  5. Controls dot visibility via ContextGate.inVehicle
+  6. Shows persistent notification with Stop action
+  7. Exposes static `instance` for Force Test access
+
+Notification:
+  - Channel: "vmc_active" (IMPORTANCE_LOW)
+  - Title: "Vehicle Motion Cues is on"
+  - Content: Mode + optional features
+  - "Stop" action → stops service
+  - If permission missing: "Grant overlay permission" action
+
+Lifecycle:
+  onCreate() → creates pipeline, gate, sets instance
+  onStartCommand() → startForeground, ensureOverlay, start gate, observeSettings
+  onDestroy() → stops gate, pipeline, removes overlay, clears instance
+
+
+================================================================================
+DOT RENDERING (DotOverlayView)
+================================================================================
+
+Layout:
+  - Left/right edges: HORIZONTAL-axis dots
+  - Top/bottom edges: VERTICAL-axis dots
+  - Center exclusion gap (35% of edge length)
+
+Dot counts:
+  Regular: 6 per side + 2 per end = 16 dots
+  More Dots: 10 per side + 4 per end = 28 dots
+  Low-end multiplier: side×0.7, end×0.6
+
+Drawing per frame:
+  1. Clear canvas to transparent
+  2. Get base radius (larger or normal)
+  3. Compute target displacement from dotOffset
+  4. Compute intensity from rawForce
+  5. Compute opacity: dotOpacity + intensity × intensityResponse
+  6. Sample background lightness (cached 200ms)
+  7. Determine fill + ring colors
+  8. For each dot:
+     - Apply axis-based displacement
+     - Add dynamic wobble if DYNAMIC pattern
+     - Interpolate position and opacity (lerp)
+     - Clamp to screen bounds
+     - Draw contrast ring
+     - Draw solid dot
+
+
+================================================================================
+CONTEXT GATE STATE MACHINE
+================================================================================
+
+States:
+  UNKNOWN  — No signal of vehicle
+  CANDIDATE — Probably in vehicle, waiting for entry grace
+  CONFIRMED — Grace period elapsed, overlay allowed
+  LOST     — Was confirmed, motion quiet, exit grace running
+
+Transitions:
+  UNKNOWN/LOST → CANDIDATE: AR says vehicle OR motion > 1.2 m/s²
+  CANDIDATE → CONFIRMED: held for entryDelayMs
+  CANDIDATE → UNKNOWN: neither signal
+  CONFIRMED → LOST: motion quiet
+  LOST → UNKNOWN: quiet for exitGraceMs × 2
+
+inVehicle = true for CONFIRMED and LOST (dots stay visible during exit grace)
+
+Signal fusion:
+  arSays = AR.inVehicle && age < 60s
+  motionSays = avgMag > 1.2 m/s² (sliding window of 12 samples)
+
+
+================================================================================
+TEST COVERAGE
+================================================================================
+
+71 unit tests across 5 files:
+
+ForceVectorTest (12 tests):
+  - Zero, magnitude, equality, copy, toString
+
+VehicleFrameTest (22 tests):
+  - smoothDeadzone (10 tests)
+  - forceToDisplacement (7 tests)
+  - forceToIntensity (5 tests)
+
+DeadReckoningIntegratorTest (14 tests):
+  - Position, reset, direction, clamping
+  - Return to center, damping, filtering
+  - Thread safety, symmetry, large dt
+
+CueSettingsTest (13 tests):
+  - Default values, ranges, equality, copy
+
+EnumsTest (10 tests):
+  - Entry counts, defaults, fromName validation
+
+
+================================================================================
+RELEASE HISTORY
+================================================================================
+
+v1.5.0 (current):
+  - Live sensor diagnostics with real phone data
+  - Force Test drives real overlay dots (no separate canvas)
+  - Doubled dot movement (SCALE_PX_PER_G=80, MAX_PX=300)
+  - Larger Dots + More Dots independent (can combine)
+  - Auto-contrast: aggressive brightness adjustment
+  - Material3 settings, simplified UI
+  - 71 tests passing, lint clean
+
+
+================================================================================
+FILE INDEX
+================================================================================
+
+Main source (28 Kotlin files):
+  data/Enums.kt                    — ActivationMode, DotPattern
+  data/CueSettings.kt              — Settings data class (18 fields)
+  data/SettingsRepository.kt       — DataStore persistence (19 keys)
+  motion/ForceVector.kt            — Lateral + longitudinal pair
+  motion/VehicleFrame.kt           — Device→vehicle transform
+  motion/DeadReckoningIntegrator.kt — Spring-damper integrator
+  motion/MotionPipeline.kt         — Sensor→displacement pipeline
+  gate/ContextGate.kt              — Vehicle detection state machine
+  gate/ActivityRecognitionProvider.kt — Google AR wrapper
+  overlay/OverlayService.kt        — Foreground service orchestrator
+  overlay/DotOverlayView.kt        — Dot rendering (Choreographer)
+  overlay/ScreenColorSampler.kt    — Wallpaper brightness sampling
+  VmcApplication.kt                — App singleton
+  MainActivity.kt                  — Bottom nav host
+  ui/SettingsScreen.kt             — Full settings UI
+  ui/CarSimulationScreen.kt        — Force Test dev tool
+  ui/PermissionsHelper.kt          — Permission checks
+  tile/VmcTileService.kt           — Quick Settings tile
+  ui/components/PreviewUtilities.kt — Shared dot layout helpers
+  ui/components/LivePreview.kt     — Phone-shaped preview
+  ui/components/ColorPickerDialog.kt — Color picker
+  ui/components/DiagnosticsSheet.kt — Modal diagnostics
+  ui/components/GroupedSection.kt  — iOS-style grouped card
+  ui/components/IosSegmentedControl.kt — Segmented control
+  ui/components/IosSlider.kt       — Styled slider
+  ui/components/IosSwitch.kt       — Styled switch
+  ui/theme/IosTheme.kt             — Theme + IosColorScheme
+  ui/theme/IosColors.kt            — Material3 color palette
+
+Test source (5 files, 71 tests):
+  motion/ForceVectorTest.kt
+  motion/VehicleFrameTest.kt
+  motion/DeadReckoningIntegratorTest.kt
+  data/CueSettingsTest.kt
+  data/EnumsTest.kt
+
+Resources:
+  AndroidManifest.xml              — Permissions, components
+  res/values/strings.xml           — String resources
+  app/build.gradle.kts             — Build config
+
+Docs:
+  README.md                        — Project overview
+  SETUP.md                         — Build instructions
+  AGENTS.md                        — AI agent guidelines
+  PROJECT DOCUMENTATION.txt        — This file
+
+================================================================================

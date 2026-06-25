@@ -194,7 +194,7 @@ fun SettingsScreen(onBack: () -> Unit = {}, modifier: Modifier = Modifier) {
             SliderSetting(
                 title = "Sensitivity",
                 value = settings.sensitivity,
-                valueRange = 0.5f..2.0f,
+                valueRange = 0.5f..3.0f,
                 format = { "${"%.1f".format(it)}\u00D7" },
                 onValueChange = { v -> scope.launch { repo.setSensitivity(v) } },
             )

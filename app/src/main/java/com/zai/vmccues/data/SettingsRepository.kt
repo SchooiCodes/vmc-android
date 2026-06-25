@@ -56,7 +56,7 @@ class SettingsRepository(private val appContext: Context) {
         adaptiveContrast = this[Keys.ADAPTIVE_CONTRAST] ?: true,
         largerDots = this[Keys.LARGER_DOTS] ?: false,
         moreDots = this[Keys.MORE_DOTS] ?: false,
-        sensitivity = this[Keys.SENSITIVITY] ?: 1.5f,
+        sensitivity = this[Keys.SENSITIVITY] ?: 2.0f,
         filterAlpha = this[Keys.FILTER_ALPHA] ?: 0.18f,
         dampingCoef = this[Keys.DAMPING_COEF] ?: 5.5f,
         returnToCenterCoef = this[Keys.RETURN_TO_CENTER] ?: 2.5f,
