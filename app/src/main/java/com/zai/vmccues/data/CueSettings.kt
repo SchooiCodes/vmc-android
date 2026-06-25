@@ -21,9 +21,9 @@ data class CueSettings(
     /** 0.10f..0.30f — low-pass filter coefficient (lower = smoother, more lag). */
     val filterAlpha: Float = 0.18f,
     /** 2.0f..10.0f (1/s) — spring-damper coefficient (higher = dots settle faster). */
-    val dampingCoef: Float = 5.5f,
+    val dampingCoef: Float = 3.0f,
     /** 0.5f..5.0f (1/s) — return-to-center pull (higher = dots recenter faster). */
-    val returnToCenterCoef: Float = 2.5f,
+    val returnToCenterCoef: Float = 1.2f,
     /** 3.0f..12.0f m/s² — max input acceleration clamp (~0.3-1.2g). */
     val inputClamp: Float = 8.0f,
 
