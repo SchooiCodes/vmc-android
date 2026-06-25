@@ -1,17 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Launcher foreground: three peripheral dots around a rounded phone glyph. -->
+<!-- App launcher icon: peripheral dots around a rounded square device glyph.
+     Dark navy background with vibrant accent dots in a radial arrangement. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Phone body -->
+
+    <!-- Central device body — rounded rectangle -->
     <path
         android:fillColor="#FFFFFFFF"
-        android:pathData="M54,28 m-14,0 a14,14 0 1,0 28,0 a14,14 0 1,0 -28,0" />
-    <!-- Peripheral dots -->
-    <path android:fillColor="#FF34D399" android:pathData="M30,54 m-4,0 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0" />
-    <path android:fillColor="#FFF59E0B" android:pathData="M78,54 m-4,0 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0" />
-    <path android:fillColor="#FF34D399" android:pathData="M54,30 m-4,0 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0" />
-    <path android:fillColor="#FFF59E0B" android:pathData="M54,78 m-4,0 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0" />
+        android:pathData="M44,34 L64,34 Q68,34 68,38 L68,70 Q68,74 64,74 L44,74 Q40,74 40,70 L40,38 Q40,34 44,34 Z" />
+
+    <!-- Screen area inside device -->
+    <path
+        android:fillColor="#1AFFFFFF"
+        android:pathData="M46,37 L62,37 Q64,37 64,39 L64,67 Q64,69 62,69 L46,69 Q44,69 44,67 L44,39 Q44,37 46,37 Z" />
+
+    <!-- Top dots (lateral motion — 3 dots) -->
+    <path android:fillColor="#FF34D399" android:pathData="M38,28 m-3,0 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0" />
+    <path android:fillColor="#FF6EE7B7" android:pathData="M54,26 m-3.5,0 a3.5,3.5 0 1,0 7,0 a3.5,3.5 0 1,0 -7,0" />
+    <path android:fillColor="#FF34D399" android:pathData="M70,28 m-3,0 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0" />
+
+    <!-- Bottom dots (lateral motion — 3 dots) -->
+    <path android:fillColor="#FF34D399" android:pathData="M38,80 m-3,0 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0" />
+    <path android:fillColor="#FF6EE7B7" android:pathData="M54,82 m-3.5,0 a3.5,3.5 0 1,0 7,0 a3.5,3.5 0 1,0 -7,0" />
+    <path android:fillColor="#FF34D399" android:pathData="M70,80 m-3,0 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0" />
+
+    <!-- Left dots (longitudinal motion — 3 dots) -->
+    <path android:fillColor="#FFFBBF24" android:pathData="M28,42 m-3,0 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0" />
+    <path android:fillColor="#FFFDE68A" android:pathData="M26,54 m-3.5,0 a3.5,3.5 0 1,0 7,0 a3.5,3.5 0 1,0 -7,0" />
+    <path android:fillColor="#FFFBBF24" android:pathData="M28,66 m-3,0 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0" />
+
+    <!-- Right dots (longitudinal motion — 3 dots) -->
+    <path android:fillColor="#FFFBBF24" android:pathData="M80,42 m-3,0 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0" />
+    <path android:fillColor="#FFFDE68A" android:pathData="M82,54 m-3.5,0 a3.5,3.5 0 1,0 7,0 a3.5,3.5 0 1,0 -7,0" />
+    <path android:fillColor="#FFFBBF24" android:pathData="M80,66 m-3,0 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0" />
 </vector>

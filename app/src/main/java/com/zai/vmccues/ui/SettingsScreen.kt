@@ -63,6 +63,7 @@ import com.zai.vmccues.ui.components.IosSlider
 import com.zai.vmccues.ui.components.IosSwitch
 import com.zai.vmccues.ui.components.LivePreview
 import com.zai.vmccues.ui.components.SettingsRow
+import com.zai.vmccues.ui.theme.IosTheme
 import kotlinx.coroutines.launch
 
 @Composable
@@ -81,20 +82,20 @@ fun SettingsScreen() {
     Column(
         Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(IosTheme.colors.groupedBackground)
             .verticalScroll(scroll),
     ) {
         // --- Title ---
         Text(
             text = stringResource(R.string.settings_title),
             style = MaterialTheme.typography.headlineLarge,
-            color = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 4.dp),
+            color = IosTheme.colors.label,
+            modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 2.dp),
         )
         Text(
             text = stringResource(R.string.settings_subtitle),
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = IosTheme.colors.secondaryLabel,
             modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 16.dp),
         )
 
@@ -308,9 +309,26 @@ fun SettingsScreen() {
         // --- Footer ---
         Spacer(Modifier.height(40.dp))
         Text(
-            text = "Vehicle Motion Cues\nA reconstruction of the iOS accessibility feature.",
+            text = "Vehicle Motion Cues",
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = IosTheme.colors.secondaryLabel,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(Modifier.height(2.dp))
+        Text(
+            text = "Version 1.5.0",
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.outline,
+            color = IosTheme.colors.tertiaryLabel,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(Modifier.height(2.dp))
+        Text(
+            text = "A reconstruction of the iOS accessibility feature.",
+            style = MaterialTheme.typography.bodySmall,
+            color = IosTheme.colors.tertiaryLabel,
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp),
         )
@@ -341,12 +359,12 @@ fun SettingsScreen() {
                     scope.launch { repo.reset() }
                     showResetDialog = false
                 }) {
-                    Text("Reset", color = MaterialTheme.colorScheme.error)
+                    Text("Reset", color = IosTheme.colors.red)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showResetDialog = false }) {
-                    Text("Cancel", color = MaterialTheme.colorScheme.primary)
+                    Text("Cancel", color = IosTheme.colors.blue)
                 }
             },
         )
@@ -357,7 +375,7 @@ fun SettingsScreen() {
 
 @Composable
 private fun CheckMark() {
-    Text("\u2713", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+    Text("\u2713", color = IosTheme.colors.blue, fontWeight = FontWeight.Bold)
 }
 
 @Composable
@@ -368,8 +386,8 @@ private fun ColorSwatch(color: Int, selected: Boolean, onClick: () -> Unit) {
             .clip(CircleShape)
             .background(Color(color))
             .then(
-                if (selected) Modifier.border(3.dp, MaterialTheme.colorScheme.primary, CircleShape)
-                else Modifier.border(0.5.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
+                if (selected) Modifier.border(3.dp, IosTheme.colors.blue, CircleShape)
+                else Modifier.border(0.5.dp, IosTheme.colors.separator, CircleShape)
             )
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
@@ -392,8 +410,8 @@ private fun SliderRow(
             Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(title, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
-            Text(format(value), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(title, style = MaterialTheme.typography.bodyLarge, color = IosTheme.colors.label, modifier = Modifier.weight(1f))
+            Text(format(value), style = MaterialTheme.typography.bodyMedium, color = IosTheme.colors.secondaryLabel)
         }
         Box(
             Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
@@ -402,7 +420,7 @@ private fun SliderRow(
         }
         if (showSeparator) {
             Box(
-                Modifier.fillMaxWidth().padding(start = 16.dp).height(0.5.dp).background(MaterialTheme.colorScheme.outlineVariant),
+                Modifier.fillMaxWidth().padding(start = 16.dp).height(0.5.dp).background(IosTheme.colors.separator),
             )
         }
     }
@@ -472,15 +490,15 @@ private fun PermissionRow(
             Icon(
                 if (granted) Icons.Outlined.CheckCircle else icon,
                 contentDescription = null,
-                tint = if (granted) MaterialTheme.colorScheme.primary else iconTint,
+                tint = if (granted) IosTheme.colors.green else iconTint,
                 modifier = Modifier.size(22.dp),
             )
         },
         trailing = {
             if (granted) {
-                Text("Granted", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
+                Text("Granted", style = MaterialTheme.typography.bodyMedium, color = IosTheme.colors.green)
             } else {
-                Text(actionLabel, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary,
+                Text(actionLabel, style = MaterialTheme.typography.bodyMedium, color = IosTheme.colors.blue,
                     modifier = Modifier.clickable(
                         interactionSource = remember { MutableInteractionSource() }, indication = null,
                     ) { onClick() })
@@ -497,6 +515,10 @@ private fun SafetyDisclaimer(onAck: () -> Unit) {
         onDismissRequest = { },
         title = { Text(stringResource(R.string.safety_title)) },
         text = { Text(stringResource(R.string.safety_body)) },
-        confirmButton = { TextButton(onClick = onAck) { Text(stringResource(R.string.safety_ack)) } },
+        confirmButton = {
+            TextButton(onClick = onAck) {
+                Text(stringResource(R.string.safety_ack), color = IosTheme.colors.blue)
+            }
+        },
     )
 }

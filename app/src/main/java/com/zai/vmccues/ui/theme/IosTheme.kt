@@ -101,16 +101,52 @@ val DefaultTypography = IosTypography(
 val LocalIosColorScheme = staticCompositionLocalOf { LightColors }
 val LocalIosTypography = staticCompositionLocalOf { DefaultTypography }
 
-private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80,
+// iOS-style Material3 color scheme — light
+private val LightColorScheme = lightColorScheme(
+    primary = Color(0xFF007AFF),
+    onPrimary = Color.White,
+    primaryContainer = Color(0xFFD6EAFF),
+    onPrimaryContainer = Color(0xFF001A3D),
+    secondary = Color(0xFF5856D6),
+    onSecondary = Color.White,
+    secondaryContainer = Color(0xFFE0DEFF),
+    onSecondaryContainer = Color(0xFF150066),
+    tertiary = Color(0xFFFF2D55),
+    onTertiary = Color.White,
+    tertiaryContainer = Color(0xFFFFD9DE),
+    onTertiaryContainer = Color(0xFF3E001A),
+    background = Color(0xFFF2F2F7),
+    onBackground = Color(0xFF1C1C1E),
+    surface = Color.White,
+    onSurface = Color(0xFF1C1C1E),
+    surfaceVariant = Color(0xFFF2F2F7),
+    onSurfaceVariant = Color(0xFF6C6C70),
+    outline = Color(0xFFC6C6C8),
+    outlineVariant = Color(0xFFE5E5EA),
 )
 
-private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40,
+// iOS-style Material3 color scheme — dark
+private val DarkColorScheme = darkColorScheme(
+    primary = Color(0xFF0A84FF),
+    onPrimary = Color(0xFF001A3D),
+    primaryContainer = Color(0xFF004299),
+    onPrimaryContainer = Color(0xFFD6EAFF),
+    secondary = Color(0xFFBF5AF2),
+    onSecondary = Color(0xFF22005D),
+    secondaryContainer = Color(0xFF4A0099),
+    onSecondaryContainer = Color(0xFFE0DEFF),
+    tertiary = Color(0xFFFF453A),
+    onTertiary = Color(0xFF3E001A),
+    tertiaryContainer = Color(0xFF8C0030),
+    onTertiaryContainer = Color(0xFFFFD9DE),
+    background = Color(0xFF000000),
+    onBackground = Color(0xFFFFFFFF),
+    surface = Color(0xFF1C1C1E),
+    onSurface = Color(0xFFFFFFFF),
+    surfaceVariant = Color(0xFF1C1C1E),
+    onSurfaceVariant = Color(0xFF98989E),
+    outline = Color(0xFF48484A),
+    outlineVariant = Color(0xFF38383A),
 )
 
 @Composable
