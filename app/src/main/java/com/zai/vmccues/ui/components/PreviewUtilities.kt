@@ -41,10 +41,9 @@ object PreviewUtilities {
         insetPx: Float,
         centerExclusion: Float,
         dynamic: Boolean,
+        density: Float = 1f,
     ): List<DotSpec> {
-        // Ensure inset is at least the dot radius (6.5dp) so corner dots
-        // are never clipped by the edge of the screen.
-        val safeInset = insetPx.coerceAtLeast(MIN_DOT_INSET_DP * (insetPx / 16f))
+        val safeInset = insetPx.coerceAtLeast(MIN_DOT_INSET_DP * density)
         val out = ArrayList<DotSpec>(sideCount * 2 + endCount * 2)
         var i = 0
 

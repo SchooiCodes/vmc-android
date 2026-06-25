@@ -91,6 +91,7 @@ class MotionPipeline(context: Context) : SensorEventListener {
     @Volatile private var deadzone: Float = 0.25f
     @Volatile private var sensitivity: Float = 1.2f
 
+    @Synchronized
     fun start(
         filterAlpha: Float,
         dampingCoef: Float,
@@ -124,6 +125,7 @@ class MotionPipeline(context: Context) : SensorEventListener {
         Log.i(TAG, "pipeline started (sensorDelay=$sensorDelay, lowEnd=$isLowEnd)")
     }
 
+    @Synchronized
     fun stop() {
         running = false
         sensorManager.unregisterListener(this)

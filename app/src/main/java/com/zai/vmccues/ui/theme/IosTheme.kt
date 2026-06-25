@@ -1,26 +1,24 @@
 package com.zai.vmccues.ui.theme
 
+import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
-/**
- * iOS-style color tokens exposed to composables via a CompositionLocal.
- * This is the cleanest way to access iOS-specific colors (like
- * `groupedBackground`, `separator`) that don't map 1:1 to Material 3 roles.
- */
 data class IosColorScheme(
     val groupedBackground: Color,
     val secondaryGroupedBackground: Color,
-    val tertiaryGroupedBackground: Color,
     val label: Color,
     val secondaryLabel: Color,
     val tertiaryLabel: Color,
@@ -36,127 +34,111 @@ data class IosColorScheme(
     val purple: Color,
 )
 
-val LightIosColorScheme = IosColorScheme(
-    groupedBackground = IosGroupedBackground,
-    secondaryGroupedBackground = IosSecondaryGroupedBackground,
-    tertiaryGroupedBackground = IosTertiaryGroupedBackground,
-    label = IosLabel,
-    secondaryLabel = IosSecondaryLabel,
-    tertiaryLabel = IosTertiaryLabel,
-    quaternaryLabel = IosQuaternaryLabel,
-    separator = IosSeparator,
-    fill = IosFill,
-    secondaryFill = IosSecondaryFill,
-    blue = IosBlue,
-    green = IosGreen,
-    red = IosRed,
-    orange = IosOrange,
-    teal = IosTeal,
-    purple = IosPurple,
+private val LightColors = IosColorScheme(
+    groupedBackground = Color(0xFFF2F2F7),
+    secondaryGroupedBackground = Color.White,
+    label = Color(0xFF1C1C1E),
+    secondaryLabel = Color(0xFF6C6C70),
+    tertiaryLabel = Color(0xFF98989E),
+    quaternaryLabel = Color(0xFFC6C6C8),
+    separator = Color(0xFFC6C6C8),
+    fill = Color(0xFFE8E8ED),
+    secondaryFill = Color(0xFFE8E8ED),
+    blue = Color(0xFF007AFF),
+    green = Color(0xFF34C759),
+    red = Color(0xFFFF3B30),
+    orange = Color(0xFFFF9500),
+    teal = Color(0xFF30B0C7),
+    purple = Color(0xFF5856D6),
 )
 
-val DarkIosColorScheme = IosColorScheme(
-    groupedBackground = IosGroupedBackgroundDark,
-    secondaryGroupedBackground = IosSecondaryGroupedBackgroundDark,
-    tertiaryGroupedBackground = IosTertiaryGroupedBackgroundDark,
-    label = IosLabelDark,
-    secondaryLabel = IosSecondaryLabelDark,
-    tertiaryLabel = IosTertiaryLabelDark,
-    quaternaryLabel = IosQuaternaryLabelDark,
-    separator = IosSeparatorDark,
-    fill = IosFillDark,
-    secondaryFill = IosSecondaryFillDark,
-    blue = IosBlueDark,
-    green = IosGreenDark,
-    red = IosRedDark,
-    orange = IosOrange,
-    teal = IosTeal,
-    purple = IosPurple,
+private val DarkColors = IosColorScheme(
+    groupedBackground = Color(0xFF000000),
+    secondaryGroupedBackground = Color(0xFF1C1C1E),
+    label = Color(0xFFFFFFFF),
+    secondaryLabel = Color(0xFF98989E),
+    tertiaryLabel = Color(0xFF6C6C70),
+    quaternaryLabel = Color(0xFF48484A),
+    separator = Color(0xFF48484A),
+    fill = Color(0xFF2C2C2E),
+    secondaryFill = Color(0xFF2C2C2E),
+    blue = Color(0xFF0A84FF),
+    green = Color(0xFF30D158),
+    red = Color(0xFFFF453A),
+    orange = Color(0xFFFF9F0A),
+    teal = Color(0xFF64D2FF),
+    purple = Color(0xFFBF5AF2),
 )
 
-val LocalIosColorScheme = staticCompositionLocalOf { LightIosColorScheme }
-
-/**
- * iOS-style typography, sized to match SF Pro / system text styles.
- * On Android these render in Roboto by default, which is visually close
- * enough at these sizes.
- */
 data class IosTypography(
-    val largeTitle: TextStyle,    // 34pt bold — nav bar large title
-    val title1: TextStyle,        // 28pt bold
-    val title2: TextStyle,        // 22pt bold
-    val title3: TextStyle,        // 20pt semibold
-    val headline: TextStyle,      // 17pt semibold — row titles
-    val body: TextStyle,          // 17pt regular — row titles
-    val callout: TextStyle,       // 16pt regular
-    val subheadline: TextStyle,   // 15pt regular — row subtitles
-    val footnote: TextStyle,      // 13pt regular
-    val caption1: TextStyle,      // 12pt regular
-    val caption2: TextStyle,      // 11pt regular
+    val largeTitle: TextStyle,
+    val title1: TextStyle,
+    val title2: TextStyle,
+    val title3: TextStyle,
+    val headline: TextStyle,
+    val body: TextStyle,
+    val callout: TextStyle,
+    val subheadline: TextStyle,
+    val footnote: TextStyle,
+    val caption1: TextStyle,
+    val caption2: TextStyle,
 )
 
-val DefaultIosTypography = IosTypography(
-    largeTitle = TextStyle(fontSize = 34.sp, fontWeight = FontWeight.Bold),
-    title1 = TextStyle(fontSize = 28.sp, fontWeight = FontWeight.Bold),
-    title2 = TextStyle(fontSize = 22.sp, fontWeight = FontWeight.Bold),
-    title3 = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.SemiBold),
-    headline = TextStyle(fontSize = 17.sp, fontWeight = FontWeight.SemiBold),
-    body = TextStyle(fontSize = 17.sp, fontWeight = FontWeight.Normal),
-    callout = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Normal),
-    subheadline = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.Normal),
-    footnote = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Normal),
+val DefaultTypography = IosTypography(
+    largeTitle = TextStyle(fontSize = 28.sp, fontWeight = FontWeight.Bold),
+    title1 = TextStyle(fontSize = 24.sp, fontWeight = FontWeight.Bold),
+    title2 = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.Bold),
+    title3 = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.SemiBold),
+    headline = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.SemiBold),
+    body = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Normal),
+    callout = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.Normal),
+    subheadline = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Normal),
+    footnote = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Normal),
     caption1 = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Normal),
     caption2 = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Normal),
 )
 
-val LocalIosTypography = staticCompositionLocalOf { DefaultIosTypography }
+val LocalIosColorScheme = staticCompositionLocalOf { LightColors }
+val LocalIosTypography = staticCompositionLocalOf { DefaultTypography }
 
-/**
- * The app theme. Wraps Material 3 (for interop with libraries that expect
- * a MaterialTheme) but also provides iOS color + typography tokens via
- * CompositionLocals for our custom iOS-style components.
- */
+private val DarkColorScheme = darkColorScheme(
+    primary = Purple80,
+    secondary = PurpleGrey80,
+    tertiary = Pink80,
+)
+
+private val LightColorScheme = lightColorScheme(
+    primary = Purple40,
+    secondary = PurpleGrey40,
+    tertiary = Pink40,
+)
+
 @Composable
 fun VmcTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit,
 ) {
-    val iosColors = if (darkTheme) DarkIosColorScheme else LightIosColorScheme
-    // Material 3 color scheme derived from the iOS palette so any Material
-    // components we do use still look reasonable.
-    val materialColors = if (darkTheme) {
-        darkColorScheme(
-            primary = iosColors.blue,
-            onPrimary = Color.White,
-            background = iosColors.groupedBackground,
-            onBackground = iosColors.label,
-            surface = iosColors.secondaryGroupedBackground,
-            onSurface = iosColors.label,
-            error = iosColors.red,
-        )
-    } else {
-        lightColorScheme(
-            primary = iosColors.blue,
-            onPrimary = Color.White,
-            background = iosColors.groupedBackground,
-            onBackground = iosColors.label,
-            surface = iosColors.secondaryGroupedBackground,
-            onSurface = iosColors.label,
-            error = iosColors.red,
-        )
+    val colorScheme = when {
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+            val context = LocalContext.current
+            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+        }
+        darkTheme -> DarkColorScheme
+        else -> LightColorScheme
     }
+    val iosColors = if (darkTheme) DarkColors else LightColors
+
     CompositionLocalProvider(
         LocalIosColorScheme provides iosColors,
-        LocalIosTypography provides DefaultIosTypography,
+        LocalIosTypography provides DefaultTypography,
     ) {
         MaterialTheme(
-            colorScheme = materialColors,
+            colorScheme = colorScheme,
             content = content,
         )
     }
 }
 
-/** Convenience accessor for the current iOS color scheme. */
 object IosTheme {
     val colors: IosColorScheme
         @Composable get() = LocalIosColorScheme.current

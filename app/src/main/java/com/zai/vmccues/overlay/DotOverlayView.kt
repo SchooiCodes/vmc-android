@@ -17,28 +17,19 @@ import com.zai.vmccues.motion.ForceVector
 import com.zai.vmccues.motion.VehicleFrame
 import com.zai.vmccues.ui.components.PreviewUtilities
 
-/**
- * Layer 3 renderer — the dot overlay (spec Part B.7).
- *
- * Thread-safe: settings/offset/visibility are written from background
- * coroutines and read on the UI thread via onDraw. All shared mutable
- * state is either @Volatile or swapped atomically.
- */
 class DotOverlayView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
 ) : View(context, attrs) {
 
-    // Thread-safe: written from coroutines, read from UI thread.
     @Volatile private var settings: CueSettings = CueSettings()
     @Volatile private var dotOffset: ForceVector = ForceVector.ZERO
     @Volatile private var dotsVisible: Boolean = false
-    @Volatile private var _rawForceForIntensity: ForceVector = ForceVector.ZERO
+    @Volatile private var rawForce: ForceVector = ForceVector.ZERO
 
     private val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val ringPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
 
-    // Layout + offsets are swapped atomically — never mutated mid-iteration.
     @Volatile private var dotSnapshot: DotSnapshot = DotSnapshot.EMPTY
 
     private val colorSampler = ScreenColorSampler(context)
@@ -58,7 +49,6 @@ class DotOverlayView @JvmOverloads constructor(
         }
     }
 
-    /** Thread-safe snapshot of layout + offsets — swapped atomically in onDraw. */
     private class DotSnapshot(
         val dots: List<PreviewUtilities.DotSpec>,
         val offsets: List<PreviewUtilities.Offset>,
@@ -75,7 +65,7 @@ class DotOverlayView @JvmOverloads constructor(
     }
     fun setDotOffset(offset: ForceVector) { dotOffset = offset }
     fun setDotsVisible(visible: Boolean) { dotsVisible = visible }
-    fun setRawForce(f: ForceVector) { _rawForceForIntensity = f }
+    fun setRawForce(f: ForceVector) { rawForce = f }
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
@@ -93,11 +83,6 @@ class DotOverlayView @JvmOverloads constructor(
         rebuildLayout()
     }
 
-    /**
-     * Rebuilds the dot layout on the UI thread (via post if called from
-     * a worker). Swaps atomically into [dotSnapshot] so onDraw never
-     * sees a half-built list.
-     */
     private fun rebuildLayout() {
         val w = widthPx; val h = heightPx
         if (w <= 0 || h <= 0) return
@@ -116,6 +101,7 @@ class DotOverlayView @JvmOverloads constructor(
             insetPx = settings.dotInsetDp * density,
             centerExclusion = CENTER_EXCLUSION,
             dynamic = settings.pattern == DotPattern.DYNAMIC,
+            density = density,
         )
         val newOffsets = List(newDots.size) { PreviewUtilities.Offset(0f, 0f, 0f) }
         dotSnapshot = DotSnapshot(newDots, newOffsets)
@@ -128,7 +114,6 @@ class DotOverlayView @JvmOverloads constructor(
         super.onDraw(canvas)
         canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
 
-        // Atomic snapshot — safe to iterate even if settings change mid-frame.
         val snapshot = dotSnapshot
         val dots = snapshot.dots
         val offsets = snapshot.offsets
@@ -140,17 +125,50 @@ class DotOverlayView @JvmOverloads constructor(
         val ringWidth = 1f * density
         val scrW = widthPx
         val scrH = heightPx
+        val maxDotR = baseRadius + ringWidth
 
         val dxTarget = dotOffset.lateral
         val dyTarget = dotOffset.longitudinal
 
-        val intensity = (VehicleFrame.forceToIntensity(_rawForceForIntensity) * s.intensityResponse)
+        val intensity = (VehicleFrame.forceToIntensity(rawForce) * s.intensityResponse)
             .coerceIn(0f, 1f)
         val baseOpacity = (s.dotOpacity + intensity).coerceIn(0.05f, 1f)
         val targetOpacity = if (dotsVisible) baseOpacity else 0f
 
         val now = SystemClock.elapsedRealtime() / 1000f
         val dotColor = s.dotColor
+        val isAdaptive = s.adaptiveContrast && s.autoContrast
+
+        var bgLight = false
+        if (isAdaptive && scrW > 0 && scrH > 0) {
+            bgLight = colorSampler.isBackgroundLight(scrW / 2f, scrH / 2f, scrW, scrH)
+        }
+
+        val ringColor: Int
+        val fillColor: Int
+        if (isAdaptive) {
+            if (bgLight) {
+                ringColor = COLOR_DARK
+                fillColor = COLOR_DARK
+            } else {
+                ringColor = COLOR_LIGHT
+                fillColor = COLOR_LIGHT
+            }
+        } else if (s.autoContrast) {
+            ringColor = if (isLightColor(dotColor)) COLOR_DARK else COLOR_LIGHT
+            fillColor = dotColor
+        } else {
+            ringColor = 0
+            fillColor = dotColor
+        }
+
+        val ringAlphaInt = (targetOpacity * RING_OPACITY * 255).toInt()
+        val fillAlphaInt = (targetOpacity * 255).toInt()
+        val ringArgb = (ringAlphaInt shl 24) or (ringColor and 0x00FFFFFF)
+        val fillArgb = (fillAlphaInt shl 24) or (fillColor and 0x00FFFFFF)
+
+        ringPaint.color = ringArgb
+        dotPaint.color = fillArgb
 
         for (i in dots.indices) {
             val d = dots[i]
@@ -165,39 +183,25 @@ class DotOverlayView @JvmOverloads constructor(
             c.y += (ty - c.y) * VISUAL_LERP
             c.opacity += (targetOpacity - c.opacity) * OPACITY_LERP
 
-            val cx = d.restX + c.x
-            val cy = d.restY + c.y
+            var cx = d.restX + c.x
+            var cy = d.restY + c.y
             val r = baseRadius * d.sizeMul
             val alpha = c.opacity.coerceIn(0f, 1f)
             if (alpha < 0.01f) continue
 
-            val alpha255 = (alpha * 255).toInt()
+            cx = cx.coerceIn(maxDotR, scrW - maxDotR)
+            cy = cy.coerceIn(maxDotR, scrH - maxDotR)
 
-            if (s.adaptiveContrast) {
-                val bgLight = colorSampler.isBackgroundLight(cx, cy, scrW, scrH)
-                if (bgLight) {
-                    val ringAlpha = (alpha * RING_OPACITY * 255).toInt()
-                    ringPaint.color = (ringAlpha shl 24) or (COLOR_DARK and 0x00FFFFFF)
-                    canvas.drawCircle(cx, cy, r + ringWidth, ringPaint)
-                    dotPaint.color = (alpha255 shl 24) or (COLOR_DARK and 0x00FFFFFF)
-                } else {
-                    val ringAlpha = (alpha * RING_OPACITY * 255).toInt()
-                    ringPaint.color = (ringAlpha shl 24) or (COLOR_LIGHT and 0x00FFFFFF)
-                    canvas.drawCircle(cx, cy, r + ringWidth, ringPaint)
-                    dotPaint.color = (alpha255 shl 24) or (COLOR_LIGHT and 0x00FFFFFF)
-                }
-                canvas.drawCircle(cx, cy, r, dotPaint)
-            } else if (s.autoContrast) {
-                val ringColor = if (isLightColor(dotColor)) COLOR_DARK else COLOR_LIGHT
-                val ringAlpha = (alpha * RING_OPACITY * 255).toInt()
-                ringPaint.color = (ringAlpha shl 24) or (ringColor and 0x00FFFFFF)
+            if (isAdaptive || s.autoContrast) {
+                val a = (alpha * 255).toInt()
+                ringPaint.color = (ringAlphaInt * a / 255 shl 24) or (ringColor and 0x00FFFFFF)
                 canvas.drawCircle(cx, cy, r + ringWidth, ringPaint)
-                dotPaint.color = (alpha255 shl 24) or (dotColor and 0x00FFFFFF)
-                canvas.drawCircle(cx, cy, r, dotPaint)
+                dotPaint.color = (a shl 24) or (fillColor and 0x00FFFFFF)
             } else {
-                dotPaint.color = (alpha255 shl 24) or (dotColor and 0x00FFFFFF)
-                canvas.drawCircle(cx, cy, r, dotPaint)
+                val a = (alpha * 255).toInt()
+                dotPaint.color = (a shl 24) or (fillColor and 0x00FFFFFF)
             }
+            canvas.drawCircle(cx, cy, r, dotPaint)
         }
     }
 
@@ -215,15 +219,10 @@ class DotOverlayView @JvmOverloads constructor(
         am.getMemoryInfo(memInfo)
         val totalMemGB = memInfo.totalMem / (1024.0 * 1024.0 * 1024.0)
         val cores = Runtime.getRuntime().availableProcessors()
-        val lowEnd = totalMemGB <= 3.0 || cores <= 4
-        if (lowEnd) Log.i(TAG, "low-end device detected (${totalMemGB.toFixed(1)}GB, ${cores} cores)")
-        return lowEnd
+        return totalMemGB <= 3.0 || cores <= 4
     }
 
-    private fun Double.toFixed(n: Int): String = "%.${n}f".format(this)
-
     companion object {
-        private const val TAG = "DotOverlayView"
         private const val BASE_RADIUS = 6.5f
         private const val LARGER_RADIUS = 11f
         private const val CENTER_EXCLUSION = 0.35f

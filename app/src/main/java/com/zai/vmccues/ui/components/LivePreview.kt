@@ -207,6 +207,7 @@ fun LivePreview(settings: CueSettings, modifier: Modifier = Modifier) {
             insetPx = settings.dotInsetDp * PREVIEW_INSET_SCALE * density.density,
             centerExclusion = CENTER_EXCLUSION,
             dynamic = settings.pattern == DotPattern.DYNAMIC,
+            density = density.density,
         )
     }
 

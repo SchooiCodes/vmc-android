@@ -26,6 +26,7 @@ import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -62,7 +63,6 @@ import com.zai.vmccues.ui.components.IosSlider
 import com.zai.vmccues.ui.components.IosSwitch
 import com.zai.vmccues.ui.components.LivePreview
 import com.zai.vmccues.ui.components.SettingsRow
-import com.zai.vmccues.ui.theme.IosTheme
 import kotlinx.coroutines.launch
 
 @Composable
@@ -73,8 +73,6 @@ fun SettingsScreen() {
     val scope = rememberCoroutineScope()
     val settings by repo.settings.collectAsStateWithLifecycle(initialValue = CueSettings())
     val scroll = rememberScrollState()
-    val colors = IosTheme.colors
-    val typo = IosTheme.typography
 
     var showDisclaimer by remember { mutableStateOf(!settings.safetyAcknowledged) }
     var showColorPicker by remember { mutableStateOf(false) }
@@ -83,20 +81,20 @@ fun SettingsScreen() {
     Column(
         Modifier
             .fillMaxSize()
-            .background(colors.groupedBackground)
+            .background(MaterialTheme.colorScheme.background)
             .verticalScroll(scroll),
     ) {
-        // --- Large title + subtitle ---
+        // --- Title ---
         Text(
             text = stringResource(R.string.settings_title),
-            style = typo.largeTitle,
-            color = colors.label,
+            style = MaterialTheme.typography.headlineLarge,
+            color = MaterialTheme.colorScheme.onBackground,
             modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 4.dp),
         )
         Text(
             text = stringResource(R.string.settings_subtitle),
-            style = typo.subheadline,
-            color = colors.secondaryLabel,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 16.dp),
         )
 
@@ -311,8 +309,8 @@ fun SettingsScreen() {
         Spacer(Modifier.height(40.dp))
         Text(
             text = "Vehicle Motion Cues\nA reconstruction of the iOS accessibility feature.",
-            style = typo.footnote,
-            color = colors.tertiaryLabel,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.outline,
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp),
         )
@@ -343,12 +341,12 @@ fun SettingsScreen() {
                     scope.launch { repo.reset() }
                     showResetDialog = false
                 }) {
-                    Text("Reset", color = IosTheme.colors.red)
+                    Text("Reset", color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showResetDialog = false }) {
-                    Text("Cancel", color = IosTheme.colors.blue)
+                    Text("Cancel", color = MaterialTheme.colorScheme.primary)
                 }
             },
         )
@@ -359,20 +357,19 @@ fun SettingsScreen() {
 
 @Composable
 private fun CheckMark() {
-    Text("\u2713", color = IosTheme.colors.blue, fontWeight = FontWeight.Bold)
+    Text("\u2713", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
 }
 
 @Composable
 private fun ColorSwatch(color: Int, selected: Boolean, onClick: () -> Unit) {
-    val colors = IosTheme.colors
     Box(
         Modifier
             .size(28.dp)
             .clip(CircleShape)
             .background(Color(color))
             .then(
-                if (selected) Modifier.border(3.dp, colors.blue, CircleShape)
-                else Modifier.border(0.5.dp, colors.separator, CircleShape)
+                if (selected) Modifier.border(3.dp, MaterialTheme.colorScheme.primary, CircleShape)
+                else Modifier.border(0.5.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
             )
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
@@ -390,15 +387,13 @@ private fun SliderRow(
     onChange: (Float) -> Unit,
     showSeparator: Boolean = true,
 ) {
-    val colors = IosTheme.colors
-    val typo = IosTheme.typography
     Column {
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(title, style = typo.body, color = colors.label, modifier = Modifier.weight(1f))
-            Text(format(value), style = typo.subheadline, color = colors.secondaryLabel)
+            Text(title, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
+            Text(format(value), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Box(
             Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
@@ -407,7 +402,7 @@ private fun SliderRow(
         }
         if (showSeparator) {
             Box(
-                Modifier.fillMaxWidth().padding(start = 16.dp).height(0.5.dp).background(colors.separator),
+                Modifier.fillMaxWidth().padding(start = 16.dp).height(0.5.dp).background(MaterialTheme.colorScheme.outlineVariant),
             )
         }
     }
@@ -416,7 +411,6 @@ private fun SliderRow(
 @Composable
 private fun PermissionsSection() {
     val context = LocalContext.current
-    val colors = IosTheme.colors
     val activityRecognitionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { }
@@ -440,25 +434,25 @@ private fun PermissionsSection() {
         ) {
             PermissionRow("Display over other apps", "Required to draw dots on top of other apps",
                 PermissionsHelper.hasOverlayPermission(context), "Open",
-                Icons.Outlined.Warning, colors.red,
+                Icons.Outlined.Warning, MaterialTheme.colorScheme.error,
             ) { runCatching { context.startActivity(PermissionsHelper.overlaySettingsIntent(context)) } }
             PermissionRow("Activity Recognition", "Required for Automatic mode",
                 PermissionsHelper.hasActivityRecognition(context), "Grant",
-                Icons.Outlined.Warning, colors.red,
+                Icons.Outlined.Warning, MaterialTheme.colorScheme.error,
             ) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
                     activityRecognitionLauncher.launch(Manifest.permission.ACTIVITY_RECOGNITION)
             }
             PermissionRow("Notifications", "Keeps the service alive",
                 PermissionsHelper.hasPostNotifications(context), "Grant",
-                Icons.Outlined.Warning, colors.red,
+                Icons.Outlined.Warning, MaterialTheme.colorScheme.error,
             ) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
                     notificationsLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
             PermissionRow("Battery Optimization", "Prevents the service from being killed",
                 PermissionsHelper.isBatteryOptExempt(context), "Open",
-                Icons.Outlined.BatteryFull, colors.orange,
+                Icons.Outlined.BatteryFull, MaterialTheme.colorScheme.tertiary,
                 showSeparator = false,
             ) { runCatching { context.startActivity(PermissionsHelper.batteryOptSettingsIntent(context)) } }
         }
@@ -471,7 +465,6 @@ private fun PermissionRow(
     icon: androidx.compose.ui.graphics.vector.ImageVector, iconTint: Color,
     showSeparator: Boolean = true, onClick: () -> Unit,
 ) {
-    val colors = IosTheme.colors
     SettingsRow(
         title = title,
         subtitle = subtitle,
@@ -479,15 +472,15 @@ private fun PermissionRow(
             Icon(
                 if (granted) Icons.Outlined.CheckCircle else icon,
                 contentDescription = null,
-                tint = if (granted) colors.green else iconTint,
+                tint = if (granted) MaterialTheme.colorScheme.primary else iconTint,
                 modifier = Modifier.size(22.dp),
             )
         },
         trailing = {
             if (granted) {
-                Text("Granted", style = IosTheme.typography.subheadline, color = colors.green)
+                Text("Granted", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
             } else {
-                Text(actionLabel, style = IosTheme.typography.subheadline, color = colors.blue,
+                Text(actionLabel, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.clickable(
                         interactionSource = remember { MutableInteractionSource() }, indication = null,
                     ) { onClick() })

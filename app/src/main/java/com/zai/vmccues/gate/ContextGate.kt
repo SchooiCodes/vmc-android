@@ -130,6 +130,7 @@ class ContextGate(
         manualInVehicle?.let { forced ->
             val s = if (forced) VehicleContextState.CONFIRMED else VehicleContextState.UNKNOWN
             val conf = if (forced) 100 else 0
+            lastDriftMs = now
             update(s, conf, now)
             return
         }

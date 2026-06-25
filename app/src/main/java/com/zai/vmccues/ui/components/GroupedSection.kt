@@ -3,7 +3,7 @@ package com.zai.vmccues.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,26 +13,15 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.zai.vmccues.ui.theme.IosTheme
 
-/**
- * A grouped "section" card as seen in iOS Settings > Accessibility.
- *
- *  - Inset grouped style: 16pt margins on each side, 10pt corner radius
- *  - Card background: secondarySystemGroupedBackground (white / #1C1C1E)
- *  - Optional header text ABOVE the card (small uppercase secondaryLabel)
- *  - Optional footer text BELOW the card (small secondaryLabel)
- *  - Rows are laid out vertically inside the card; separators between rows
- *    are drawn by [SettingsRow] itself
- */
 @Composable
 fun GroupedSection(
     header: String? = null,
@@ -40,40 +29,36 @@ fun GroupedSection(
     modifier: Modifier = Modifier,
     content: @Composable GroupedSectionScope.() -> Unit,
 ) {
-    val colors = IosTheme.colors
-    val typo = IosTheme.typography
     Column(modifier = modifier.fillMaxWidth()) {
         if (header != null) {
             Text(
-                text = header.uppercase(),
-                style = typo.caption1,
-                color = colors.secondaryLabel,
-                modifier = Modifier.padding(start = 32.dp, end = 16.dp, bottom = 6.dp, top = 18.dp),
-                letterSpacing = 0.4.sp,
+                text = header,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp, top = 16.dp),
             )
         }
-        // The card.
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(colors.secondaryGroupedBackground),
+        Card(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         ) {
-            GroupedSectionScope().content()
+            Column {
+                GroupedSectionScope().content()
+            }
         }
         if (footer != null) {
             Text(
                 text = footer,
-                style = typo.footnote,
-                color = colors.secondaryLabel,
-                modifier = Modifier.padding(start = 32.dp, end = 32.dp, top = 6.dp),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 8.dp),
             )
         }
     }
 }
 
-/** Receiver scope for [GroupedSection] content — provides [SettingsRow]. */
 class GroupedSectionScope internal constructor() {
     @Composable
     fun SettingsRow(
@@ -95,10 +80,6 @@ class GroupedSectionScope internal constructor() {
     }
 }
 
-/**
- * A single iOS settings row. Title on the left (with optional icon),
- * control/value on the right, inset separator at the bottom.
- */
 @Composable
 fun SettingsRow(
     title: String,
@@ -108,12 +89,13 @@ fun SettingsRow(
     showSeparator: Boolean = true,
     onClick: (() -> Unit)? = null,
 ) {
-    val colors = IosTheme.colors
-    val typo = IosTheme.typography
     Column(
         Modifier
             .fillMaxWidth()
-            .then(if (onClick != null) Modifier.clickableNoRipple(onClick) else Modifier),
+            .then(if (onClick != null) Modifier.clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+            ) { onClick() } else Modifier),
     ) {
         Row(
             Modifier
@@ -125,8 +107,7 @@ fun SettingsRow(
                 Box(
                     Modifier
                         .width(28.dp)
-                        .height(28.dp)
-                        .clip(RoundedCornerShape(7.dp)),
+                        .height(28.dp),
                     contentAlignment = Alignment.Center,
                 ) {
                     icon()
@@ -136,14 +117,14 @@ fun SettingsRow(
             Column(Modifier.weight(1f)) {
                 Text(
                     text = title,
-                    style = typo.body,
-                    color = colors.label,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
                 if (subtitle != null) {
                     Text(
                         text = subtitle,
-                        style = typo.subheadline,
-                        color = colors.secondaryLabel,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
@@ -153,25 +134,13 @@ fun SettingsRow(
             }
         }
         if (showSeparator) {
-            // Inset separator — starts at the left text boundary, not the
-            // edge of the card, matching iOS.
-            val insetStart = if (icon != null) 56.dp else 16.dp
             Box(
                 Modifier
                     .fillMaxWidth()
-                    .padding(start = insetStart)
+                    .padding(start = 16.dp)
                     .height(0.5.dp)
-                    .background(colors.separator),
+                    .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
             )
         }
     }
 }
-
-/** Helper: clickable without the Material ripple (iOS has no ripple). */
-private fun Modifier.clickableNoRipple(onClick: () -> Unit): Modifier =
-    this.then(
-        Modifier.clickable(
-            interactionSource = MutableInteractionSource(),
-            indication = null,
-        ) { onClick() }
-    )

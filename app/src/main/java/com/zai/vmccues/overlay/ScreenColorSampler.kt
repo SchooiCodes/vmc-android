@@ -1,8 +1,9 @@
 package com.zai.vmccues.overlay
 
-import android.app.WallpaperManager
 import android.annotation.SuppressLint
+import android.app.WallpaperManager
 import android.content.Context
+import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.drawable.Drawable
@@ -20,77 +21,102 @@ class ScreenColorSampler(context: Context) {
     }
 
     private val wallpaperManager = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-        context.getSystemService(Context.WALLPAPER_SERVICE) as? WallpaperManager
-            ?: WallpaperManager.getInstance(context)
-            ?: throw IllegalStateException("Unable to get WallpaperManager")
+        try {
+            context.getSystemService(Context.WALLPAPER_SERVICE) as? WallpaperManager
+                ?: WallpaperManager.getInstance(context)
+        } catch (_: Exception) { null }
     } else {
-        WallpaperManager.getInstance(context)
+        try { WallpaperManager.getInstance(context) } catch (_: Exception) { null }
     }
+
+    private val appContext = context.applicationContext
+    private var reusePixels = IntArray(0)
 
     @Volatile private var wallpaperBitmap: Bitmap? = null
     @Volatile private var lastSampleTime: Long = 0L
+    @Volatile private var cachedBrightness: Float = 0.5f
+    @Volatile private var lastBrightnessTime: Long = 0L
 
-    /**
-     * Returns the average brightness (0.0 = dark, 1.0 = light) of the
-     * wallpaper region behind the given screen coordinates [screenX], [screenY].
-     *
-     * [screenWidth], [screenHeight] are the full screen dimensions in pixels.
-     * The result is cached for [SAMPLE_INTERVAL_MS] to avoid per-frame work.
-     */
     fun getBackgroundBrightness(
         screenX: Float,
         screenY: Float,
         screenWidth: Int,
         screenHeight: Int,
     ): Float {
-        val bitmap = getWallpaperBitmap() ?: return 0.5f
+        val now = SystemClock.elapsedRealtime()
+        if (now - lastBrightnessTime < SAMPLE_INTERVAL_MS) return cachedBrightness
+        lastBrightnessTime = now
+        if (wallpaperManager == null) {
+            cachedBrightness = fallbackBrightness()
+            return cachedBrightness
+        }
+        val bitmap = getWallpaperBitmap()
+        if (bitmap == null) {
+            cachedBrightness = fallbackBrightness()
+            return cachedBrightness
+        }
         val bmpW = bitmap.width
         val bmpH = bitmap.height
-        if (bmpW == 0 || bmpH == 0) return 0.5f
+        if (bmpW == 0 || bmpH == 0) {
+            cachedBrightness = fallbackBrightness()
+            return cachedBrightness
+        }
 
-        // Map screen coordinates to wallpaper coordinates.
         val wpX = ((screenX / screenWidth) * bmpW).toInt().coerceIn(0, bmpW - 1)
         val wpY = ((screenY / screenHeight) * bmpH).toInt().coerceIn(0, bmpH - 1)
-
-        // Sample a small region around the point.
         val half = SAMPLE_SIZE / 2
         val x0 = (wpX - half).coerceIn(0, bmpW - 1)
         val y0 = (wpY - half).coerceIn(0, bmpH - 1)
         val x1 = (wpX + half).coerceIn(0, bmpW - 1)
         val y1 = (wpY + half).coerceIn(0, bmpH - 1)
+        if (x1 <= x0 || y1 <= y0) {
+            cachedBrightness = fallbackBrightness()
+            return cachedBrightness
+        }
 
-        if (x1 <= x0 || y1 <= y0) return 0.5f
+        val stride = x1 - x0
+        val height = y1 - y0
+        val total = stride * height
+        if (reusePixels.size < total) reusePixels = IntArray(total)
+        try {
+            bitmap.getPixels(reusePixels, 0, stride, x0, y0, stride, height)
+        } catch (_: Exception) {
+            cachedBrightness = fallbackBrightness()
+            return cachedBrightness
+        }
 
         var totalLuminance = 0L
-        var count = 0
-        val pixels = IntArray((x1 - x0) * (y1 - y0))
-        bitmap.getPixels(pixels, 0, x1 - x0, x0, y0, x1 - x0, y1 - y0)
-
-        for (pixel in pixels) {
+        for (i in 0 until total) {
+            val pixel = reusePixels[i]
             val r = (pixel shr 16) and 0xFF
             val g = (pixel shr 8) and 0xFF
             val b = pixel and 0xFF
             totalLuminance += (0.299 * r + 0.587 * g + 0.114 * b).toLong()
-            count++
         }
-
-        return if (count > 0) (totalLuminance.toFloat() / count / 255f).coerceIn(0f, 1f) else 0.5f
+        cachedBrightness = (totalLuminance.toFloat() / total / 255f).coerceIn(0f, 1f)
+        return cachedBrightness
     }
 
-    /**
-     * Returns true if the wallpaper background behind [screenX], [screenY]
-     * is considered "light" (brightness > 0.45), meaning the dot should be
-     * dark with a dark contrast ring.
-     */
     fun isBackgroundLight(
-        screenX: Float,
-        screenY: Float,
-        screenWidth: Int,
-        screenHeight: Int,
+        screenX: Float, screenY: Float,
+        screenWidth: Int, screenHeight: Int,
     ): Boolean = getBackgroundBrightness(screenX, screenY, screenWidth, screenHeight) > 0.45f
+
+    private var darkModeChecked = false
+    private var isDarkMode = false
+
+    private fun fallbackBrightness(): Float {
+        if (!darkModeChecked) {
+            val mode = appContext.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
+            isDarkMode = mode == Configuration.UI_MODE_NIGHT_YES
+            darkModeChecked = true
+        }
+        return if (isDarkMode) 0.1f else 0.9f
+    }
 
     @SuppressLint("MissingPermission")
     private fun getWallpaperBitmap(): Bitmap? {
+        if (wallpaperManager == null) return null
         val now = SystemClock.elapsedRealtime()
         if (wallpaperBitmap != null && now - lastSampleTime < SAMPLE_INTERVAL_MS) {
             return wallpaperBitmap
@@ -104,7 +130,6 @@ class ScreenColorSampler(context: Context) {
             }
             val w = min(drawable.intrinsicWidth, 512).coerceAtLeast(1)
             val h = min(drawable.intrinsicHeight, 512).coerceAtLeast(1)
-
             val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
             try {
                 val canvas = Canvas(bmp)
