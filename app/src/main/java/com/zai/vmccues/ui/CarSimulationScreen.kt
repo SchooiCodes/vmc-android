@@ -17,12 +17,12 @@ import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -32,9 +32,9 @@ import androidx.compose.ui.unit.sp
 import com.zai.vmccues.data.ActivationMode
 import com.zai.vmccues.data.CueSettings
 import com.zai.vmccues.overlay.OverlayService
+import kotlinx.coroutines.delay
 import kotlin.math.PI
 import kotlin.math.sin
-import kotlinx.coroutines.delay
 
 /**
  * Dev test screen — feeds simulated forces into the REAL overlay pipeline
@@ -53,6 +53,13 @@ fun CarSimulationScreen(
     var serviceRunning by remember { mutableStateOf(false) }
 
     val ctx = LocalContext.current
+
+    // Collect real sensor data from the pipeline
+    val pipeline = OverlayService.instance?.getPipeline()
+    val rawAccel by pipeline?.rawAccelValues?.collectAsState() ?: remember { mutableStateOf(Triple(0f, 0f, 0f)) }
+    val rawForce by pipeline?.rawForce?.collectAsState() ?: remember { mutableStateOf(com.zai.vmccues.motion.ForceVector.ZERO) }
+    val filteredForce by pipeline?.filteredForce?.collectAsState() ?: remember { mutableStateOf(com.zai.vmccues.motion.ForceVector.ZERO) }
+    val dotOffset by pipeline?.dotOffsetPx?.collectAsState() ?: remember { mutableStateOf(com.zai.vmccues.motion.ForceVector.ZERO) }
 
     // Ensure the overlay service is running in ON mode for testing
     LaunchedEffect(Unit) {
@@ -197,19 +204,31 @@ fun CarSimulationScreen(
 
             Spacer(Modifier.height(8.dp))
 
-            // Diagnostics
+            // Diagnostics — REAL SENSOR DATA
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.shapes.small)
                     .padding(12.dp),
             ) {
-                Text("Diagnostics", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
-                Text("Mode: ${settings.mode}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("Sensitivity: ${"%.1f".format(settings.sensitivity)}\u00D7", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("Deadzone: ${"%.2f".format(settings.deadzone)} m/s²", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("Dots: ${if (settings.moreDots) "More" else "Standard"} ${if (settings.largerDots) "+ Larger" else ""}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("Opacity: ${(settings.dotOpacity * 100).toInt()}%", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Live Sensor Data", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                Spacer(Modifier.height(4.dp))
+
+                Text("Accel (device): X=${"%.2f".format(rawAccel.first)} Y=${"%.2f".format(rawAccel.second)} Z=${"%.2f".format(rawAccel.third)} m/s²",
+                    fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Raw force: lat=${"%.2f".format(rawForce.lateral)} lon=${"%.2f".format(rawForce.longitudinal)} m/s²",
+                    fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Filtered: lat=${"%.2f".format(filteredForce.lateral)} lon=${"%.2f".format(filteredForce.longitudinal)} m/s²",
+                    fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Dot offset: X=${"%.1f".format(dotOffset.lateral)} Y=${"%.1f".format(dotOffset.longitudinal)} px",
+                    fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+                Spacer(Modifier.height(6.dp))
+                Text("Settings", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                Text("Mode: ${settings.mode} | Sens: ${"%.1f".format(settings.sensitivity)}\u00D7 | Dead: ${"%.2f".format(settings.deadzone)} m/s²",
+                    fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Dots: ${if (settings.moreDots) "More" else "Std"} ${if (settings.largerDots) "+Larger" else ""} | Opacity: ${(settings.dotOpacity * 100).toInt()}%",
+                    fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
 
             Spacer(Modifier.height(16.dp))

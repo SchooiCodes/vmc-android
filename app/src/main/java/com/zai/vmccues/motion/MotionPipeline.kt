@@ -73,6 +73,14 @@ class MotionPipeline(context: Context) : SensorEventListener {
     private val _filteredForce = MutableStateFlow(ForceVector.ZERO)
     val filteredForce: StateFlow<ForceVector> = _filteredForce.asStateFlow()
 
+    /** Raw accelerometer values (device frame). */
+    private val _rawAccelValues = MutableStateFlow(Triple(0f, 0f, 0f))
+    val rawAccelValues: StateFlow<Triple<Float, Float, Float>> = _rawAccelValues.asStateFlow()
+
+    /** Dot offset in pixels (for diagnostics). */
+    private val _dotOffsetPx = MutableStateFlow(ForceVector.ZERO)
+    val dotOffsetPx: StateFlow<ForceVector> = _dotOffsetPx.asStateFlow()
+
     @Volatile var lastSampleUptimeMs: Long = 0L
         private set
     @Volatile var available: Boolean = false
@@ -164,6 +172,7 @@ class MotionPipeline(context: Context) : SensorEventListener {
             kotlin.math.abs(newOffset.longitudinal - _dotOffset.value.longitudinal) > epsilon) {
             _dotOffset.value = newOffset
         }
+        _dotOffsetPx.value = newOffset
         lastSampleUptimeMs = now
     }
 
@@ -198,6 +207,8 @@ class MotionPipeline(context: Context) : SensorEventListener {
         val dt = if (lastTickMs > 0) Math.min(0.1f, (now - lastTickMs) / 1000f) else 1f / 60f
         lastTickMs = now
 
+        _rawAccelValues.value = Triple(ax, ay, az)
+
         val vehicle = VehicleFrame.transform(latestRotation, ax, ay, az)
         // Emit raw force only if significant change occurs.
         val newRaw = vehicle
@@ -223,6 +234,7 @@ class MotionPipeline(context: Context) : SensorEventListener {
             kotlin.math.abs(newOffset.longitudinal - _dotOffset.value.longitudinal) > epsilon) {
             _dotOffset.value = newOffset
         }
+        _dotOffsetPx.value = newOffset
         lastSampleUptimeMs = now
     }
 
