@@ -64,7 +64,6 @@ import com.zai.vmccues.data.ActivationMode
 import com.zai.vmccues.data.CueSettings
 import com.zai.vmccues.data.DotPattern
 import com.zai.vmccues.overlay.OverlayService
-import com.zai.vmccues.ui.components.ColorPickerDialog
 import kotlinx.coroutines.launch
 
 @Composable
@@ -77,7 +76,6 @@ fun SettingsScreen(onBack: () -> Unit = {}, modifier: Modifier = Modifier) {
     val scroll = rememberScrollState()
 
     var showDisclaimer by remember { mutableStateOf(!settings.safetyAcknowledged) }
-    var showColorPicker by remember { mutableStateOf(false) }
     var showResetDialog by remember { mutableStateOf(false) }
     var showAdvanced by remember { mutableStateOf(false) }
 
@@ -158,16 +156,6 @@ fun SettingsScreen(onBack: () -> Unit = {}, modifier: Modifier = Modifier) {
                         label = { Text("Dynamic") },
                     )
                 }
-            }
-            Box(Modifier.fillMaxWidth().padding(start = 16.dp).height(0.5.dp).background(MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)))
-            // Color
-            RowSetting(title = "Color", onClick = { showColorPicker = true }) {
-                Box(
-                    Modifier
-                        .size(28.dp)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(Color(settings.dotColor))
-                )
             }
             // Adaptive Contrast
             SwitchSetting(
@@ -254,13 +242,6 @@ fun SettingsScreen(onBack: () -> Unit = {}, modifier: Modifier = Modifier) {
             scope.launch { repo.ackSafety() }
             showDisclaimer = false
         })
-    }
-    if (showColorPicker) {
-        ColorPickerDialog(
-            currentColor = settings.dotColor,
-            onColorSelected = { c -> scope.launch { repo.setDotColor(c) } },
-            onDismiss = { showColorPicker = false },
-        )
     }
     if (showResetDialog) {
         AlertDialog(

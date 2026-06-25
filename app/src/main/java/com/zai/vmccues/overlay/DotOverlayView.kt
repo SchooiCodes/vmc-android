@@ -159,12 +159,11 @@ class DotOverlayView @JvmOverloads constructor(
         val targetOpacity = if (dotsVisible) baseOpacity else 0f
 
         val now = SystemClock.elapsedRealtime() / 1000f
-        val dotColor = s.dotColor
         val useAdaptive = s.adaptiveContrast
 
-        // Determine background lightness, caching for 200 ms to reduce sampler calls.
+        // Determine background lightness, caching for 200ms to reduce sampler calls.
         var bgLight = false
-        if (useAdaptive && scrW > 0 && scrH > 0) {
+        if (scrW > 0 && scrH > 0) {
             val nowMs = SystemClock.elapsedRealtime()
             if (nowMs - bgLightCacheTime > 200) {
                 bgLight = colorSampler.isBackgroundLight(scrW / 2f, scrH / 2f, scrW, scrH)
@@ -175,20 +174,15 @@ class DotOverlayView @JvmOverloads constructor(
             }
         }
 
+        // Auto contrast: pitch black on light bg, pitch white on dark bg.
         val ringColor: Int
         val fillColor: Int
-        if (useAdaptive) {
-            // Apple behavior: adjust saturation of user's color to maintain contrast.
-            fillColor = PreviewUtilities.adjustSaturationForContrast(dotColor, bgLight)
-            ringColor = if (s.autoContrast) {
-                if (PreviewUtilities.isLightColor(fillColor)) COLOR_DARK else COLOR_LIGHT
-            } else 0
-        } else if (s.autoContrast) {
-            ringColor = if (PreviewUtilities.isLightColor(dotColor)) COLOR_DARK else COLOR_LIGHT
-            fillColor = dotColor
+        if (bgLight) {
+            fillColor = android.graphics.Color.BLACK
+            ringColor = if (s.autoContrast) android.graphics.Color.WHITE else 0
         } else {
-            ringColor = 0
-            fillColor = dotColor
+            fillColor = android.graphics.Color.WHITE
+            ringColor = if (s.autoContrast) android.graphics.Color.BLACK else 0
         }
 
         val ringAlphaInt = (targetOpacity * RING_OPACITY * 255).toInt()
