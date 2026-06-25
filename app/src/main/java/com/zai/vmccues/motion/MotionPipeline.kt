@@ -1,6 +1,5 @@
 package com.zai.vmccues.motion
 
-import android.app.ActivityManager
 import android.content.Context
 import android.hardware.Sensor
 import android.hardware.SensorEvent
@@ -10,6 +9,7 @@ import android.os.Handler
 import android.os.HandlerThread
 import android.os.SystemClock
 import android.util.Log
+import com.zai.vmccues.ui.components.PreviewUtilities
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -55,15 +55,7 @@ class MotionPipeline(context: Context) : SensorEventListener {
     private val sensorThread = HandlerThread("MotionPipeline").apply { start() }
     private val sensorHandler = Handler(sensorThread.looper)
 
-    // Adaptive sensor rate for low-end devices.
-    private val isLowEnd: Boolean by lazy {
-        val am = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager ?: return@lazy false
-        val memInfo = ActivityManager.MemoryInfo()
-        am.getMemoryInfo(memInfo)
-        val totalMemGB = memInfo.totalMem / (1024.0 * 1024.0 * 1024.0)
-        val cores = Runtime.getRuntime().availableProcessors()
-        totalMemGB <= 2.0 || cores <= 2
-    }
+    private val isLowEnd: Boolean by lazy { PreviewUtilities.detectLowEnd(context) }
     private val sensorDelay: Int
         get() = if (isLowEnd) SensorManager.SENSOR_DELAY_UI else SensorManager.SENSOR_DELAY_GAME
 
@@ -168,18 +160,30 @@ class MotionPipeline(context: Context) : SensorEventListener {
         lastTickMs = now
 
         val vehicle = VehicleFrame.transform(latestRotation, ax, ay, az)
-        _rawForce.value = vehicle
+        // Emit raw force only if significant change occurs.
+        val newRaw = vehicle
+        val rawEpsilon = 0.001f
+        if (kotlin.math.abs(newRaw.lateral - _rawForce.value.lateral) > rawEpsilon ||
+            kotlin.math.abs(newRaw.longitudinal - _rawForce.value.longitudinal) > rawEpsilon) {
+            _rawForce.value = newRaw
+        }
 
-        val dampedLat = if (Math.abs(vehicle.lateral) < deadzone) 0f else vehicle.lateral
-        val dampedLon = if (Math.abs(vehicle.longitudinal) < deadzone) 0f else vehicle.longitudinal
+        val dampedLat = VehicleFrame.smoothDeadzone(vehicle.lateral, deadzone)
+        val dampedLon = VehicleFrame.smoothDeadzone(vehicle.longitudinal, deadzone)
         val damped = ForceVector(dampedLat, dampedLon)
         _filteredForce.value = damped
 
         val offset = integrator.update(damped, dt)
-        _dotOffset.value = ForceVector(
+        // Emit only if displacement changed beyond a small epsilon to avoid redundant UI updates.
+        val newOffset = ForceVector(
             lateral = offset.lateral * sensitivity,
             longitudinal = offset.longitudinal * sensitivity,
         )
+        val epsilon = 0.01f // pixels
+        if (kotlin.math.abs(newOffset.lateral - _dotOffset.value.lateral) > epsilon ||
+            kotlin.math.abs(newOffset.longitudinal - _dotOffset.value.longitudinal) > epsilon) {
+            _dotOffset.value = newOffset
+        }
         lastSampleUptimeMs = now
     }
 

@@ -1,5 +1,7 @@
 package com.zai.vmccues.ui.components
 
+import android.app.ActivityManager
+import android.content.Context
 import android.graphics.Color
 import com.zai.vmccues.data.DotPattern
 import com.zai.vmccues.motion.ForceVector
@@ -12,14 +14,27 @@ object PreviewUtilities {
 
     /**
      * Returns true if the ARGB [color] is perceived as "light" (luminance > 0.5),
-     * meaning it should get a dark contrast ring. Mirrors the helper in
-     * [com.zai.vmccues.overlay.DotOverlayView] exactly.
+     * meaning it should get a dark contrast ring.
      */
     fun isLightColor(color: Int): Boolean {
         val r = (color shr 16) and 0xFF
         val g = (color shr 8) and 0xFF
         val b = color and 0xFF
         return (0.299 * r + 0.587 * g + 0.114 * b) / 255.0 > 0.5
+    }
+
+    /**
+     * Detect low-end devices (≤2 GB RAM or ≤2 cores) so we can reduce
+     * dot count and use slower sensor sampling.
+     */
+    fun detectLowEnd(context: Context): Boolean {
+        val am = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
+            ?: return false
+        val memInfo = ActivityManager.MemoryInfo()
+        am.getMemoryInfo(memInfo)
+        val totalMemGB = memInfo.totalMem / (1024.0 * 1024.0 * 1024.0)
+        val cores = Runtime.getRuntime().availableProcessors()
+        return totalMemGB <= 2.0 || cores <= 2
     }
 
     /**

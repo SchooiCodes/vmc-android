@@ -75,10 +75,8 @@ class OverlayService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // Handle the "Stop" action from the notification.
         if (intent?.action == ACTION_STOP) {
             Log.i(TAG, "Stop action received")
-            // Flip the setting to OFF so the UI stays in sync, then stop.
             val app = applicationContext as VmcApplication
             scope.launch { app.settings.setMode(ActivationMode.OFF) }
             stopSelfClean()
@@ -86,8 +84,6 @@ class OverlayService : Service() {
         }
 
         val notification = buildNotification()
-        // API 34+ requires the foregroundServiceType to be passed to
-        // startForeground explicitly (and to match the manifest-declared type).
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             startForeground(NOTIF_ID, notification,
                 android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
@@ -95,6 +91,7 @@ class OverlayService : Service() {
             startForeground(NOTIF_ID, notification)
         }
         ensureOverlay()
+        gate.start()
         observeSettings()
         return START_STICKY
     }
@@ -113,10 +110,13 @@ class OverlayService : Service() {
     // --- overlay window management ----------------------------------------
 
     private fun ensureOverlay() {
-        // If current view is still attached, nothing to do.
         if (overlayAttached && overlayView?.isAttachedToWindow == true) return
         if (!Settings.canDrawOverlays(this)) {
             Log.w(TAG, "SYSTEM_ALERT_WINDOW not granted; overlay will not be shown")
+            notificationManager()?.notify(NOTIF_ID, buildNotification(
+                statusText = "Overlay permission required — open Settings",
+                permissionMissing = true,
+            ))
             return
         }
         val view = DotOverlayView(this)
@@ -172,9 +172,12 @@ class OverlayService : Service() {
             // React to settings changes.
             launch {
                 app.settings.settings.collectLatest { s ->
-                    // OFF -> shut everything down.
+                    // OFF -> stop pipeline, hide dots, but stay alive.
                     if (s.mode == ActivationMode.OFF) {
-                        stopSelfClean()
+                        pipeline.stop()
+                        gate.force(false)
+                        overlayView?.setDotsVisible(false)
+                        notificationManager()?.notify(NOTIF_ID, buildNotification(s))
                         return@collectLatest
                     }
                     overlayView?.setSettings(s)
@@ -235,7 +238,6 @@ class OverlayService : Service() {
                     }
             }
         }
-        gate.start()
     }
 
     private fun stopSelfClean() {
@@ -248,7 +250,11 @@ class OverlayService : Service() {
 
     // --- notification ------------------------------------------------------
 
-    private fun buildNotification(settings: CueSettings? = null): Notification {
+    private fun buildNotification(
+        settings: CueSettings? = null,
+        statusText: String? = null,
+        permissionMissing: Boolean = false,
+    ): Notification {
         val nm = notificationManager()
         if (nm != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && nm.getNotificationChannel(CHANNEL_ID) == null) {
             nm.createNotificationChannel(
@@ -270,17 +276,26 @@ class OverlayService : Service() {
             Intent(this, OverlayService::class.java).setAction(ACTION_STOP),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
-        val modeText = when (settings?.mode) {
+        val modeText = statusText ?: when (settings?.mode) {
             ActivationMode.ON -> "Dots always visible"
             ActivationMode.AUTOMATIC -> "Waiting for vehicle context"
             ActivationMode.OFF, null -> getString(R.string.notif_text)
         }
+        val overlaySettingsIntent = if (permissionMissing) {
+            PendingIntent.getActivity(
+                this, 2,
+                Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION).apply {
+                    data = android.net.Uri.parse("package:$packageName")
+                },
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+            )
+        } else null
         val detailText = buildString {
             append(modeText)
             if (settings?.adaptiveContrast == true) append(" · Adaptive contrast")
             if (settings?.pattern == com.zai.vmccues.data.DotPattern.DYNAMIC) append(" · Dynamic pattern")
         }
-        return NotificationCompat.Builder(this, CHANNEL_ID)
+        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(R.string.notif_title))
             .setContentText(detailText)
             .setSmallIcon(R.drawable.ic_tile)
@@ -288,7 +303,10 @@ class OverlayService : Service() {
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setContentIntent(openIntent)
             .addAction(R.drawable.ic_tile, getString(R.string.toggle_stop), stopIntent)
-            .build()
+        if (overlaySettingsIntent != null) {
+            builder.addAction(0, "Grant overlay permission", overlaySettingsIntent)
+        }
+        return builder.build()
     }
 
     companion object {

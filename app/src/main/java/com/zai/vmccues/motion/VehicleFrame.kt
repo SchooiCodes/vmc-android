@@ -131,6 +131,25 @@ object VehicleFrame {
     fun forceToIntensity(force: ForceVector): Float =
         (force.magnitude() / 2.5f).coerceIn(0f, 1f)
 
+    /**
+     * Smooth deadzone: instead of a hard cutoff (abruptly zeroing forces
+     * below the threshold), use a cubic smoothstep that ramps force from 0
+     * at 0 up to full strength at the deadzone boundary.
+     *
+     * This prevents the "dots don't move at all" feeling from subtle motion
+     * while still killing sensor noise (very small forces produce negligible
+     * displacement).
+     */
+    fun smoothDeadzone(value: Float, deadzone: Float): Float {
+        if (deadzone <= 0f) return value
+        val abs = Math.abs(value)
+        if (abs <= 0f) return 0f
+        if (abs >= deadzone) return value
+        val t = abs / deadzone
+        val smooth = t * t * (3f - 2f * t)
+        return Math.signum(value) * smooth * abs
+    }
+
     private const val DEFAULT_DEADZONE = 0.15f        // m/s^2
     private const val SCALE_PX_PER_G = 18f    // px per m/s^2
     private const val DEFAULT_MAX_PX = 120f

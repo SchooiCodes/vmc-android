@@ -28,8 +28,8 @@ import androidx.compose.ui.unit.dp
 import com.zai.vmccues.data.CueSettings
 import com.zai.vmccues.data.DotPattern
 import com.zai.vmccues.ui.theme.IosTheme
+import com.zai.vmccues.motion.VehicleFrame
 import com.zai.vmccues.ui.components.PreviewUtilities
-import kotlin.math.abs
 import kotlin.math.hypot
 import kotlin.math.sin
 
@@ -152,9 +152,9 @@ fun LivePreview(settings: CueSettings, modifier: Modifier = Modifier) {
                 val (lateralRaw, longitudinalRaw) = simulateForces(t)
 
                 // ---- Deadzone (spec B.4) ----
-                // Forces below the noise floor are zeroed (kills jitter).
-                val lateral = if (abs(lateralRaw) < s.deadzone) 0f else lateralRaw
-                val longitudinal = if (abs(longitudinalRaw) < s.deadzone) 0f else longitudinalRaw
+                // Smooth ramp so subtle forces still produce visible movement.
+                val lateral = VehicleFrame.smoothDeadzone(lateralRaw, s.deadzone)
+                val longitudinal = VehicleFrame.smoothDeadzone(longitudinalRaw, s.deadzone)
 
                 // ---- Clamp (spec B.4) ----
                 // Symmetric clamp so a pothole / hard-brake spike doesn't

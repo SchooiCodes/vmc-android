@@ -1,6 +1,5 @@
 package com.zai.vmccues.overlay
 
-import android.app.ActivityManager
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
@@ -22,33 +21,53 @@ class DotOverlayView @JvmOverloads constructor(
     attrs: AttributeSet? = null,
 ) : View(context, attrs) {
 
+    // Cache background‑light result for a short interval to avoid costly sampling each frame.
+    @Volatile private var bgLightCache: Boolean = false
+    @Volatile private var bgLightCacheTime: Long = 0L // ms
+
     @Volatile private var settings: CueSettings = CueSettings()
-    @Volatile private var dotOffset: ForceVector = ForceVector.ZERO
     @Volatile private var dotsVisible: Boolean = false
+    @Volatile private var dotOffset: ForceVector = ForceVector.ZERO
     @Volatile private var rawForce: ForceVector = ForceVector.ZERO
 
-    private val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+    private val isLowEnd: Boolean by lazy { PreviewUtilities.detectLowEnd(context) }
     private val ringPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
-
-    @Volatile private var dotSnapshot: DotSnapshot = DotSnapshot.EMPTY
-
-    private val colorSampler = ScreenColorSampler(context)
-    private val isLowEnd: Boolean by lazy { detectLowEnd() }
+    private val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
 
     private val choreographer = Choreographer.getInstance()
+
+    private val colorSampler = ScreenColorSampler(context)
+    @Volatile private var dotSnapshot: DotSnapshot = DotSnapshot.EMPTY
+
     private val frameCallback = object : Choreographer.FrameCallback {
         override fun doFrame(frameTimeNanos: Long) {
             invalidate()
-            choreographer.postFrameCallback(this)
+            // Continue loop only if still requested
+            if (frameRequested) {
+                choreographer.postFrameCallback(this)
+            }
+        }
+    }
+    @Volatile private var frameRequested = false
+    private fun ensureFrameCallback() {
+        if (!frameRequested) {
+            frameRequested = true
+            choreographer.postFrameCallback(frameCallback)
+        }
+    }
+    private fun cancelFrameCallback() {
+        if (frameRequested) {
+            frameRequested = false
+            choreographer.removeFrameCallback(frameCallback)
         }
     }
 
     private class DotSnapshot(
         val dots: List<PreviewUtilities.DotSpec>,
-        val offsets: List<PreviewUtilities.Offset>,
+        val offsets: MutableList<PreviewUtilities.Offset>,
     ) {
         companion object {
-            val EMPTY = DotSnapshot(emptyList(), emptyList())
+            val EMPTY = DotSnapshot(emptyList(), mutableListOf())
         }
     }
 
@@ -58,16 +77,24 @@ class DotOverlayView @JvmOverloads constructor(
         rebuildLayout()
     }
     fun setDotOffset(offset: ForceVector) { dotOffset = offset }
-    fun setDotsVisible(visible: Boolean) { dotsVisible = visible }
+    fun setDotsVisible(visible: Boolean) {
+        if (visible == dotsVisible) return
+        dotsVisible = visible
+        if (visible) {
+            ensureFrameCallback()
+        } else {
+            cancelFrameCallback()
+        }
+    }
     fun setRawForce(f: ForceVector) { rawForce = f }
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
-        choreographer.removeFrameCallback(frameCallback)
-        choreographer.postFrameCallback(frameCallback)
+        // Start frame callbacks only when view is attached and visible
+        if (dotsVisible) ensureFrameCallback()
     }
     override fun onDetachedFromWindow() {
-        choreographer.removeFrameCallback(frameCallback)
+        cancelFrameCallback()
         colorSampler.destroy()
         super.onDetachedFromWindow()
     }
@@ -96,7 +123,10 @@ class DotOverlayView @JvmOverloads constructor(
             dynamic = settings.pattern == DotPattern.DYNAMIC,
             density = density,
         )
-        val newOffsets = List(newDots.size) { PreviewUtilities.Offset(0f, 0f, 0f) }
+        val newOffsets = mutableListOf<PreviewUtilities.Offset>()
+        for (i in newDots.indices) {
+            newOffsets.add(PreviewUtilities.Offset(0f, 0f, 0f))
+        }
         dotSnapshot = DotSnapshot(newDots, newOffsets)
     }
 
@@ -132,9 +162,17 @@ class DotOverlayView @JvmOverloads constructor(
         val dotColor = s.dotColor
         val useAdaptive = s.adaptiveContrast
 
+        // Determine background lightness, caching for 200 ms to reduce sampler calls.
         var bgLight = false
         if (useAdaptive && scrW > 0 && scrH > 0) {
-            bgLight = colorSampler.isBackgroundLight(scrW / 2f, scrH / 2f, scrW, scrH)
+            val nowMs = SystemClock.elapsedRealtime()
+            if (nowMs - bgLightCacheTime > 200) {
+                bgLight = colorSampler.isBackgroundLight(scrW / 2f, scrH / 2f, scrW, scrH)
+                bgLightCache = bgLight
+                bgLightCacheTime = nowMs
+            } else {
+                bgLight = bgLightCache
+            }
         }
 
         val ringColor: Int
@@ -148,7 +186,7 @@ class DotOverlayView @JvmOverloads constructor(
                 ringColor = if (s.autoContrast) COLOR_DARK else COLOR_LIGHT
             }
         } else if (s.autoContrast) {
-            ringColor = if (isLightColor(dotColor)) COLOR_DARK else COLOR_LIGHT
+            ringColor = if (PreviewUtilities.isLightColor(dotColor)) COLOR_DARK else COLOR_LIGHT
             fillColor = dotColor
         } else {
             ringColor = 0
@@ -196,23 +234,6 @@ class DotOverlayView @JvmOverloads constructor(
             }
             canvas.drawCircle(cx, cy, r, dotPaint)
         }
-    }
-
-    private fun isLightColor(color: Int): Boolean {
-        val r = (color shr 16) and 0xFF
-        val g = (color shr 8) and 0xFF
-        val b = color and 0xFF
-        return (0.299 * r + 0.587 * g + 0.114 * b) / 255.0 > 0.5
-    }
-
-    private fun detectLowEnd(): Boolean {
-        val am = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
-            ?: return false
-        val memInfo = ActivityManager.MemoryInfo()
-        am.getMemoryInfo(memInfo)
-        val totalMemGB = memInfo.totalMem / (1024.0 * 1024.0 * 1024.0)
-        val cores = Runtime.getRuntime().availableProcessors()
-        return totalMemGB <= 2.0 || cores <= 2
     }
 
     companion object {
