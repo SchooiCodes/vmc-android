@@ -5,6 +5,7 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.PorterDuff
+import android.media.projection.MediaProjection
 import android.os.SystemClock
 import android.util.AttributeSet
 import android.util.Log
@@ -19,6 +20,7 @@ import com.zai.vmccues.ui.components.PreviewUtilities
 class DotOverlayView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
+    projection: MediaProjection? = null,
 ) : View(context, attrs) {
 
     // Cache background‑light result for a short interval to avoid costly sampling each frame.
@@ -36,7 +38,7 @@ class DotOverlayView @JvmOverloads constructor(
 
     private val choreographer = Choreographer.getInstance()
 
-    private val colorSampler = ScreenColorSampler(context)
+    private val colorSampler = ScreenColorSampler(context).also { it.setProjection(projection) }
     @Volatile private var dotSnapshot: DotSnapshot = DotSnapshot.EMPTY
 
     private val frameCallback = object : Choreographer.FrameCallback {
@@ -153,13 +155,10 @@ class DotOverlayView @JvmOverloads constructor(
         val dxTarget = dotOffset.lateral
         val dyTarget = dotOffset.longitudinal
 
-        val intensity = (VehicleFrame.forceToIntensity(rawForce) * s.intensityResponse)
-            .coerceIn(0f, 1f)
-        val baseOpacity = (s.dotOpacity + intensity).coerceIn(0.05f, 1f)
-        val targetOpacity = if (dotsVisible) baseOpacity else 0f
+        // Full opacity — no semi-transparency
+        val targetOpacity = if (dotsVisible) 1f else 0f
 
         val now = SystemClock.elapsedRealtime() / 1000f
-        val useAdaptive = s.adaptiveContrast
 
         // Determine background lightness, caching for 200ms to reduce sampler calls.
         var bgLight = false
@@ -185,7 +184,7 @@ class DotOverlayView @JvmOverloads constructor(
             ringColor = if (s.autoContrast) android.graphics.Color.BLACK else 0
         }
 
-        val ringAlphaInt = (targetOpacity * RING_OPACITY * 255).toInt()
+        val ringAlphaInt = (targetOpacity * 255).toInt()
         val fillAlphaInt = (targetOpacity * 255).toInt()
         val ringArgb = (ringAlphaInt shl 24) or (ringColor and 0x00FFFFFF)
         val fillArgb = (fillAlphaInt shl 24) or (fillColor and 0x00FFFFFF)
@@ -229,8 +228,8 @@ class DotOverlayView @JvmOverloads constructor(
     }
 
     companion object {
-        private const val BASE_RADIUS = 6.5f
-        private const val LARGER_RADIUS = 11f
+        private const val BASE_RADIUS = 9f
+        private const val LARGER_RADIUS = 15f
         private const val CENTER_EXCLUSION = 0.35f
         private const val VISUAL_LERP = 0.65f
         private const val OPACITY_LERP = 0.50f

@@ -1,13 +1,13 @@
 package com.zai.vmccues
 
+import android.app.Activity
+import android.content.Intent
+import android.media.projection.MediaProjectionManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.animation.AnimatedContentTransitionScope
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -24,6 +24,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
@@ -37,16 +38,32 @@ import com.zai.vmccues.ui.SettingsScreen
 import com.zai.vmccues.ui.theme.VmcTheme
 
 class MainActivity : ComponentActivity() {
+
+    private val projectionLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK && result.data != null) {
+            val app = application as VmcApplication
+            app.screenProjectionResultCode = result.resultCode
+            app.screenProjectionData = result.data
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             VmcTheme {
                 Surface(Modifier.fillMaxSize()) {
-                    MainApp()
+                    MainApp(onRequestProjection = { requestScreenCapture() })
                 }
             }
         }
+    }
+
+    private fun requestScreenCapture() {
+        val mgr = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+        projectionLauncher.launch(mgr.createScreenCaptureIntent())
     }
 }
 
@@ -60,12 +77,19 @@ private sealed class Screen(
 }
 
 @Composable
-private fun MainApp() {
+private fun MainApp(onRequestProjection: () -> Unit = {}) {
     val app = androidx.compose.ui.platform.LocalContext.current.applicationContext as VmcApplication
     val settings by app.settings.settings.collectAsStateWithLifecycle(initialValue = CueSettings())
 
     var selectedTab by remember { mutableIntStateOf(0) }
     val screens = listOf(Screen.Drive, Screen.Settings)
+
+    // Auto-request screen capture on first launch
+    LaunchedEffect(Unit) {
+        if (app.screenProjectionData == null) {
+            onRequestProjection()
+        }
+    }
 
     Scaffold(
         bottomBar = {

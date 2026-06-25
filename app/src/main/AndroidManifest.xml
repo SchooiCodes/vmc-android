@@ -13,6 +13,7 @@
          explicit foregroundServiceType + the matching permission below. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
 
     <!-- The foreground notification (API 33+ needs runtime grant). -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
@@ -54,10 +55,7 @@
         <service
             android:name=".overlay.OverlayService"
             android:exported="false"
-            android:foregroundServiceType="specialUse">
-            <property
-                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="Accessibility-style motion-cue overlay for passengers" />
+            android:foregroundServiceType="mediaProjection">
         </service>
 
         <!-- Layer 4: Quick Settings tile (Control Center equivalent). -->

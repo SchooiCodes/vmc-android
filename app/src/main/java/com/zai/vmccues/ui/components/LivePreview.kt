@@ -180,7 +180,7 @@ fun LivePreview(settings: CueSettings, modifier: Modifier = Modifier) {
                 // ---- Negate position so dots appear anchored to earth ----
                 // (spec B.3: "Negating the calculated position vector
                 // achieves this effect"). Scale to preview pixels:
-                //   - PX_PER_MS2 = 70 (same as the real overlay)
+                //   - PX_PER_MS2 = 90 (same as the real overlay)
                 //   - PREVIEW_DISPLACEMENT_SCALE = 0.30 (smaller preview)
                 //   - user sensitivity (applied last, like MotionPipeline)
                 val scaleX = PX_PER_MS2 * PREVIEW_DISPLACEMENT_SCALE * s.sensitivity
@@ -382,9 +382,9 @@ private const val PREVIEW_RADIUS_SCALE = 0.45f
 private const val PREVIEW_DISPLACEMENT_SCALE = 0.30f
 
 // Dead-reckoning scale: m/s² integrated → px (matches the real overlay's
-// pxPerMs2 = 70). Multiplied by PREVIEW_DISPLACEMENT_SCALE + sensitivity in
+// pxPerMs2 = 90). Multiplied by PREVIEW_DISPLACEMENT_SCALE + sensitivity in
 // the LaunchedEffect above.
-private const val PX_PER_MS2 = 70f
+private const val PX_PER_MS2 = 90f
 
 // Frame-time clamps so the integrator can't blow up on a stalled frame.
 private const val MIN_DT_SEC = 1e-5f
@@ -392,8 +392,8 @@ private const val MAX_DT_SEC = 0.1f
 
 // Dot base radii in dp — mirrors DotOverlayView.BASE_RADIUS (7f) /
 // LARGER_RADIUS (12f) — scaled down by PREVIEW_RADIUS_SCALE for the preview.
-private const val BASE_RADIUS_DP = 6.5f
-private const val LARGER_RADIUS_DP = 11f
+private const val BASE_RADIUS_DP = 9f
+private const val LARGER_RADIUS_DP = 15f
 
 // Longitudinal pulse: a short 2.5 m/s² "brake" burst every 4 seconds.
 private const val PULSE_PERIOD_SEC = 4f

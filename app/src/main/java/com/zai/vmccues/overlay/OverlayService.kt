@@ -8,6 +8,8 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.graphics.PixelFormat
+import android.media.projection.MediaProjection
+import android.media.projection.MediaProjectionManager
 import android.os.Build
 import android.os.IBinder
 import android.provider.Settings
@@ -59,6 +61,7 @@ class OverlayService : Service() {
     private lateinit var windowManager: WindowManager
     @Volatile private var overlayView: DotOverlayView? = null
     @Volatile private var overlayAttached = false
+    private var mediaProjection: MediaProjection? = null
 
     /** Expose pipeline for simulated force injection (Force Test screen). */
     fun getPipeline(): MotionPipeline = pipeline
@@ -87,10 +90,13 @@ class OverlayService : Service() {
             return START_NOT_STICKY
         }
 
+        // Create MediaProjection from stored token for screen capture
+        setupMediaProjection()
+
         val notification = buildNotification()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             startForeground(NOTIF_ID, notification,
-                android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+                android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION)
         } else {
             startForeground(NOTIF_ID, notification)
         }
@@ -100,12 +106,27 @@ class OverlayService : Service() {
         return START_STICKY
     }
 
+    private fun setupMediaProjection() {
+        val app = applicationContext as VmcApplication
+        val data = app.screenProjectionData ?: return
+        val resultCode = app.screenProjectionResultCode
+        try {
+            val mgr = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+            mediaProjection = mgr.getMediaProjection(resultCode, data)
+            Log.i(TAG, "MediaProjection created")
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to create MediaProjection", e)
+        }
+    }
+
     override fun onDestroy() {
         settingsJob?.cancel()
         gate.stop()
         pipeline.stop()
         pipeline.destroy()
         removeOverlay()
+        mediaProjection?.stop()
+        mediaProjection = null
         scope.cancel()
         instance = null
         Log.i(TAG, "OverlayService destroyed")
@@ -124,7 +145,7 @@ class OverlayService : Service() {
             ))
             return
         }
-        val view = DotOverlayView(this)
+        val view = DotOverlayView(this, projection = mediaProjection)
         overlayView = view
         val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY

@@ -38,10 +38,10 @@ class DeadReckoningIntegrator {
 
     // Tunable parameters (see spec Part B.3/B.4).
     @Volatile var filterAlpha: Float = 0.18f         // low-pass coefficient (0.15-0.25)
-    @Volatile var dampingCoef: Float = 2.5f          // spring-damper (4.0-8.0 1/s)
-    @Volatile var returnToCenterCoef: Float = 0.8f   // position pull (1.5-3.0 1/s)
-    @Volatile var inputClamp: Float = 10.0f          // max input acceleration (m/s²)
-    @Volatile var pxPerMs2: Float = 70f              // scale: m/s² integrated → px
+    @Volatile var dampingCoef: Float = 2.0f          // spring-damper (4.0-8.0 1/s)
+    @Volatile var returnToCenterCoef: Float = 0.5f   // position pull (1.5-3.0 1/s)
+    @Volatile var inputClamp: Float = 12.0f          // max input acceleration (m/s²)
+    @Volatile var pxPerMs2: Float = 90f              // scale: m/s² integrated → px
 
     fun setParams(
         filterAlpha: Float,

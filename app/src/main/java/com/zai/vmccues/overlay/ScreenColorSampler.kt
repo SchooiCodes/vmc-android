@@ -1,109 +1,136 @@
 package com.zai.vmccues.overlay
 
-import android.annotation.SuppressLint
-import android.app.WallpaperManager
 import android.content.Context
 import android.content.res.Configuration
-import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.drawable.Drawable
+import android.graphics.ImageFormat
+import android.hardware.display.DisplayManager
+import android.hardware.display.VirtualDisplay
+import android.media.ImageReader
+import android.media.projection.MediaProjection
 import android.os.Build
+import android.os.Handler
+import android.os.HandlerThread
 import android.os.SystemClock
+import android.util.DisplayMetrics
 import android.util.Log
-import kotlin.math.min
+import android.view.WindowManager
 
 class ScreenColorSampler(context: Context) {
 
     companion object {
         private const val TAG = "ScreenColorSampler"
-        private const val SAMPLE_SIZE = 8
-        private const val SAMPLE_INTERVAL_MS = 1000L
-    }
-
-    private val wallpaperManager = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-        try {
-            context.getSystemService(Context.WALLPAPER_SERVICE) as? WallpaperManager
-                ?: WallpaperManager.getInstance(context)
-        } catch (_: Exception) { null }
-    } else {
-        try { WallpaperManager.getInstance(context) } catch (_: Exception) { null }
+        private const val SAMPLE_INTERVAL_MS = 200L
+        private const val CAPTURE_WIDTH = 64
+        private const val CAPTURE_HEIGHT = 64
     }
 
     private val appContext = context.applicationContext
-    private var reusePixels = IntArray(0)
+    private var projection: MediaProjection? = null
+    private var imageReader: ImageReader? = null
+    private var virtualDisplay: VirtualDisplay? = null
 
-    @Volatile private var wallpaperBitmap: Bitmap? = null
-    @Volatile private var lastSampleTime: Long = 0L
     @Volatile private var cachedBrightness: Float = 0.5f
     @Volatile private var lastBrightnessTime: Long = 0L
 
-    fun getBackgroundBrightness(
-        screenX: Float,
-        screenY: Float,
-        screenWidth: Int,
-        screenHeight: Int,
-    ): Float {
-        val now = SystemClock.elapsedRealtime()
-        if (now - lastBrightnessTime < SAMPLE_INTERVAL_MS) return cachedBrightness
-        lastBrightnessTime = now
-        if (wallpaperManager == null) {
-            cachedBrightness = fallbackBrightness()
-            return cachedBrightness
-        }
-        val bitmap = getWallpaperBitmap()
-        if (bitmap == null) {
-            cachedBrightness = fallbackBrightness()
-            return cachedBrightness
-        }
-        val bmpW = bitmap.width
-        val bmpH = bitmap.height
-        if (bmpW == 0 || bmpH == 0) {
-            cachedBrightness = fallbackBrightness()
-            return cachedBrightness
-        }
+    private val captureThread = HandlerThread("ScreenColorSampler").apply { start() }
+    private val captureHandler = Handler(captureThread.looper)
 
-        val wpX = ((screenX / screenWidth) * bmpW).toInt().coerceIn(0, bmpW - 1)
-        val wpY = ((screenY / screenHeight) * bmpH).toInt().coerceIn(0, bmpH - 1)
-        val half = SAMPLE_SIZE / 2
-        val x0 = (wpX - half).coerceIn(0, bmpW - 1)
-        val y0 = (wpY - half).coerceIn(0, bmpH - 1)
-        val x1 = (wpX + half).coerceIn(0, bmpW - 1)
-        val y1 = (wpY + half).coerceIn(0, bmpH - 1)
-        if (x1 <= x0 || y1 <= y0) {
-            cachedBrightness = fallbackBrightness()
-            return cachedBrightness
-        }
+    private val wm = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+    private val metrics = DisplayMetrics().also { @Suppress("DEPRECATION") wm.defaultDisplay.getRealMetrics(it) }
 
-        val stride = x1 - x0
-        val height = y1 - y0
-        val total = stride * height
-        if (reusePixels.size < total) reusePixels = IntArray(total)
-        try {
-            bitmap.getPixels(reusePixels, 0, stride, x0, y0, stride, height)
-        } catch (_: Exception) {
-            cachedBrightness = fallbackBrightness()
-            return cachedBrightness
-        }
+    private var darkModeChecked = false
+    private var isDarkMode = false
 
-        var totalLuminance = 0L
-        for (i in 0 until total) {
-            val pixel = reusePixels[i]
-            val r = (pixel shr 16) and 0xFF
-            val g = (pixel shr 8) and 0xFF
-            val b = pixel and 0xFF
-            totalLuminance += (0.299 * r + 0.587 * g + 0.114 * b).toLong()
-        }
-        cachedBrightness = (totalLuminance.toFloat() / total / 255f).coerceIn(0f, 1f)
-        return cachedBrightness
+    @Volatile private var bgLightCache = false
+    @Volatile private var bgLightCacheTime = 0L
+
+    fun setProjection(proj: MediaProjection?) {
+        projection = proj
+        setupCapture()
+    }
+
+    private fun setupCapture() {
+        val proj = projection ?: return
+        imageReader?.close()
+        imageReader = ImageReader.newInstance(
+            CAPTURE_WIDTH, CAPTURE_HEIGHT, ImageFormat.RGB_565, 2
+        )
+        virtualDisplay?.release()
+        virtualDisplay = proj.createVirtualDisplay(
+            "VMCColorSample",
+            CAPTURE_WIDTH, CAPTURE_HEIGHT,
+            metrics.densityDpi,
+            DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+            imageReader!!.surface,
+            null,
+            captureHandler,
+        )
+        Log.i(TAG, "virtual display created: ${CAPTURE_WIDTH}x${CAPTURE_HEIGHT}")
     }
 
     fun isBackgroundLight(
         screenX: Float, screenY: Float,
         screenWidth: Int, screenHeight: Int,
-    ): Boolean = getBackgroundBrightness(screenX, screenY, screenWidth, screenHeight) > 0.45f
+    ): Boolean {
+        val nowMs = SystemClock.elapsedRealtime()
+        if (nowMs - bgLightCacheTime < 200) return bgLightCache
+        val bright = sampleBrightness(screenX, screenY, screenWidth, screenHeight)
+        bgLightCache = bright > 0.45f
+        bgLightCacheTime = nowMs
+        return bgLightCache
+    }
 
-    private var darkModeChecked = false
-    private var isDarkMode = false
+    private fun sampleBrightness(
+        screenX: Float, screenY: Float,
+        screenWidth: Int, screenHeight: Int,
+    ): Float {
+        val now = SystemClock.elapsedRealtime()
+        if (now - lastBrightnessTime < SAMPLE_INTERVAL_MS) return cachedBrightness
+        lastBrightnessTime = now
+
+        val reader = imageReader ?: return fallbackBrightness()
+        val image = reader.acquireLatestImage() ?: return cachedBrightness
+        try {
+            val plane = image.planes[0]
+            val buffer = plane.buffer
+            val rowStride = plane.rowStride
+            val pixelStride = plane.pixelStride
+
+            val capX = ((screenX / screenWidth) * CAPTURE_WIDTH).toInt().coerceIn(0, CAPTURE_WIDTH - 1)
+            val capY = ((screenY / screenHeight) * CAPTURE_HEIGHT).toInt().coerceIn(0, CAPTURE_HEIGHT - 1)
+
+            val half = 2
+            var totalLuminance = 0L
+            var count = 0
+            for (dy in -half..half) {
+                for (dx in -half..half) {
+                    val px = (capX + dx).coerceIn(0, CAPTURE_WIDTH - 1)
+                    val py = (capY + dy).coerceIn(0, CAPTURE_HEIGHT - 1)
+                    val offset = py * rowStride + px * pixelStride
+                    if (offset + 1 < buffer.capacity()) {
+                        val rgb565 = buffer.getShort(offset).toInt() and 0xFFFF
+                        val r = (rgb565 shr 11) and 0x1F
+                        val g = (rgb565 shr 5) and 0x3F
+                        val b = rgb565 and 0x1F
+                        val r8 = (r * 255) / 31
+                        val g8 = (g * 255) / 63
+                        val b8 = (b * 255) / 31
+                        totalLuminance += (0.299 * r8 + 0.587 * g8 + 0.114 * b8).toLong()
+                        count++
+                    }
+                }
+            }
+            if (count > 0) {
+                cachedBrightness = (totalLuminance.toFloat() / count / 255f).coerceIn(0f, 1f)
+            }
+            return cachedBrightness
+        } catch (e: Exception) {
+            Log.w(TAG, "sample error", e)
+            return cachedBrightness
+        } finally {
+            image.close()
+        }
+    }
 
     private fun fallbackBrightness(): Float {
         if (!darkModeChecked) {
@@ -114,43 +141,13 @@ class ScreenColorSampler(context: Context) {
         return if (isDarkMode) 0.1f else 0.9f
     }
 
-    @SuppressLint("MissingPermission")
-    private fun getWallpaperBitmap(): Bitmap? {
-        if (wallpaperManager == null) return null
-        val now = SystemClock.elapsedRealtime()
-        if (wallpaperBitmap != null && now - lastSampleTime < SAMPLE_INTERVAL_MS) {
-            return wallpaperBitmap
-        }
-        lastSampleTime = now
-        return try {
-            val drawable: Drawable? = wallpaperManager.peekDrawable()
-            if (drawable == null) {
-                Log.w(TAG, "wallpaper drawable is null")
-                return wallpaperBitmap
-            }
-            val w = min(drawable.intrinsicWidth, 512).coerceAtLeast(1)
-            val h = min(drawable.intrinsicHeight, 512).coerceAtLeast(1)
-            val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
-            try {
-                val canvas = Canvas(bmp)
-                drawable.setBounds(0, 0, w, h)
-                drawable.draw(canvas)
-                wallpaperBitmap?.recycle()
-                wallpaperBitmap = bmp
-                bmp
-            } catch (e: Exception) {
-                bmp.recycle()
-                Log.w(TAG, "failed to draw wallpaper", e)
-                wallpaperBitmap
-            }
-        } catch (e: Exception) {
-            Log.w(TAG, "failed to sample wallpaper", e)
-            wallpaperBitmap
-        }
-    }
-
     fun destroy() {
-        wallpaperBitmap?.recycle()
-        wallpaperBitmap = null
+        virtualDisplay?.release()
+        virtualDisplay = null
+        imageReader?.close()
+        imageReader = null
+        projection?.stop()
+        projection = null
+        captureThread.quitSafely()
     }
 }
